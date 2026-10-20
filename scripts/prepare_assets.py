@@ -53,30 +53,27 @@ markers=[
  ("garrison","Устав гарнизонной и караульной служб",r"УСТАВ\s+ГАРНИЗОННОЙ(?:,?\s+КОМЕНДАНТСКОЙ)?\s+И\s+КАРАУЛЬНОЙ\s+СЛУЖБ\s+ВООРУЖЕННЫХ\s+СИЛ\s+РОССИЙСКОЙ\s+ФЕДЕРАЦИИ")
 ]
 documents=[];errors=[]
-for url in urls:
+preambles=[
+ r"Настоящий\s+Устав\s+определяет\s+права\s+и\s+обязанности",
+ r"(?:Настоящий\s+Устав\s+определяет\s+)?сущность\s+воинской\s+дисциплины",
+ r"Настоящий\s+Устав\s+определяет\s+предназначение"
+]
+for page,((ident,name,heading),preamble) in enumerate(zip(markers,preambles),start=1):
+    url=f"http://pravo.gov.ru/proxy/ips/?doc_itself=&nd=102118429&page={page}&rdk=0"
     try:
-        text=get_text(url);found=[]
-        print('Source characters:',len(text),'heading context:',text[:500],flush=True)
-        pathlib.Path('SOURCE_DIAGNOSTIC.txt').write_text(text,encoding='utf-8')
-        preambles=[
-            r"Настоящий\s+Устав\s+определяет\s+права\s+и\s+обязанности",
-            r"Настоящий\s+Устав\s+определяет\s+сущность\s+воинской\s+дисциплины",
-            r"Настоящий\s+Устав\s+определяет\s+предназначение"
-        ]
-        for (ident,name,pattern),preamble in zip(markers,preambles):
-            matches=list(re.finditer(preamble,text,re.I))
-            print("Preamble",ident,[(m.start(),text[m.start():m.start()+180]) for m in matches],flush=True)
-            if not matches:raise ValueError("Missing preamble: "+name)
-            found.append((matches[0].start(),ident,name))
-        found.sort()
-        for i,(start,ident,name) in enumerate(found):
-            part=text[start:found[i+1][0] if i+1<len(found) else len(text)].strip()
-            count=len(re.findall(r"(?m)^\s*\d+(?:\.\d+)*\.\s",part))
-            if count<80:raise ValueError(f"Insufficient numbered paragraphs: {name}: {count}")
-            documents.append({"id":ident,"name":name,"source":url,"note":"Указ №1495 от 10.11.2007. Снимок источника от "+datetime.now(timezone.utc).strftime("%d.%m.%Y")+". Актуальность редакции отдельно не подтверждена.","text":part})
-        break
+        text=get_text(url)
+        print("Page",page,"characters",len(text),"prefix",text[:300],flush=True)
+        match=re.search(preamble,text,re.I)
+        if not match:raise ValueError("Missing statute preamble: "+name)
+        text=text[match.start():]
+        # Discard website navigation after the legal text where identifiable.
+        count=len(re.findall(r"(?m)^\s*\d+(?:\.\d+)*\.\s",text))
+        if count<80:raise ValueError(f"Insufficient numbered paragraphs: {name}: {count}")
+        documents.append({"id":ident,"name":name,"source":url,"note":"Указ №1495 от 10.11.2007. Снимок официального источника от "+datetime.now(timezone.utc).strftime("%d.%m.%Y")+". Актуальность редакции отдельно не подтверждена.","text":text})
+        print("Loaded",name,"paragraphs",count,flush=True)
     except Exception as error:
-        documents=[];errors.append({"url":url,"error":str(error)});print("Source unavailable:",url,str(error),flush=True)
+        errors.append({"url":url,"error":str(error)})
+        print("Source unavailable:",url,str(error),flush=True)
 if not documents:
     # Public-domain enacted texts, archived university copy; explicitly labelled original 2007 edition.
     from pypdf import PdfReader
