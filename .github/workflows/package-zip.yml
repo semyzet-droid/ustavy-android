@@ -1,0 +1,38 @@
+name: Package existing APK as ZIP
+on:
+  push:
+    branches: [package-zip]
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Download published APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p package
+          gh release download build-5 --repo "$GITHUB_REPOSITORY" --pattern ustavy-offline.apk --dir package
+      - name: Verify APK and create ZIP archive
+        run: |
+          python3 - <<'PY'
+          import hashlib, pathlib, zipfile
+          apk=pathlib.Path("package/ustavy-offline.apk")
+          with apk.open("rb") as source:
+              digest=hashlib.file_digest(source,"sha256").hexdigest()
+          assert digest=="1677741c37bf06226f6a5cb0ddfe893771294a52c8112d055473f7b1d1f3e772", "APK checksum mismatch"
+          archive=pathlib.Path("ustavy-offline.zip")
+          with zipfile.ZipFile(archive,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=6) as z:
+              z.write(apk,"ustavy-offline.apk")
+          with zipfile.ZipFile(archive) as z:
+              assert z.namelist()==["ustavy-offline.apk"]
+              assert z.testzip() is None, "ZIP integrity check failed"
+          print("Verified APK SHA256:",digest)
+          print("ZIP bytes:",archive.stat().st_size)
+          PY
+      - name: Publish ZIP beside APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload build-5 ustavy-offline.zip --repo "$GITHUB_REPOSITORY"
