@@ -45,10 +45,7 @@ def get_text(url):
     if html.count("\ufffd")>100:html=raw.decode("cp1251",errors="replace")
     p=Extract();p.feed(html);return re.sub(r"[ \t\xa0]+"," ","".join(p.text))
 urls=[
- "http://pravo.gov.ru/proxy/ips/?docbody=&nd=102118429",
- "http://pravo.gov.ru/proxy/ips/?doc_itself=&nd=102118429&page=1&rdk=0",
- "https://pravo.gov.ru/proxy/ips/?docbody=&nd=102118429",
- "http://www.kremlin.ru/acts/bank/26528/page/all"
+ "http://pravo.gov.ru/proxy/ips/?doc_itself=&nd=102118429&page=1&rdk=0"
 ]
 markers=[
  ("internal","Устав внутренней службы",r"УСТАВ\s+ВНУТРЕННЕЙ\s+СЛУЖБЫ\s+ВООРУЖЕННЫХ\s+СИЛ\s+РОССИЙСКОЙ\s+ФЕДЕРАЦИИ"),
@@ -61,11 +58,16 @@ for url in urls:
         text=get_text(url);found=[]
         print('Source characters:',len(text),'heading context:',text[:500],flush=True)
         pathlib.Path('SOURCE_DIAGNOSTIC.txt').write_text(text,encoding='utf-8')
-        for ident,name,pattern in markers:
-            matches=list(re.finditer(pattern,text))
-            if not matches:matches=list(re.finditer(pattern,text,re.I))
-            if not matches:raise ValueError("Missing heading: "+name)
-            found.append((matches[-1].start(),ident,name))
+        preambles=[
+            r"Настоящий\s+Устав\s+определяет\s+права\s+и\s+обязанности",
+            r"Настоящий\s+Устав\s+определяет\s+сущность\s+воинской\s+дисциплины",
+            r"Настоящий\s+Устав\s+определяет\s+предназначение"
+        ]
+        for (ident,name,pattern),preamble in zip(markers,preambles):
+            matches=list(re.finditer(preamble,text,re.I))
+            print("Preamble",ident,[(m.start(),text[m.start():m.start()+180]) for m in matches],flush=True)
+            if not matches:raise ValueError("Missing preamble: "+name)
+            found.append((matches[0].start(),ident,name))
         found.sort()
         for i,(start,ident,name) in enumerate(found):
             part=text[start:found[i+1][0] if i+1<len(found) else len(text)].strip()
