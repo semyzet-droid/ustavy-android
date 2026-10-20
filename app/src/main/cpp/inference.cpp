@@ -15,7 +15,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_ru_ustavy_offline_LocalAi_generate(
  std::string out;
  try {
   static bool initialized=[](){llama_backend_init();return true;}();(void)initialized;
-  auto mp=llama_model_default_params();mp.n_gpu_layers=0;mp.use_mmap=true;mp.progress_callback=[](float,void*){return !stop.load();};
+  auto mp=llama_model_default_params();mp.n_gpu_layers=0;mp.progress_callback=[](float,void*){return !stop.load();};
   std::string filename=bytes(e,path),prompt=bytes(e,input);
   std::unique_ptr<llama_model,decltype(&llama_model_free)> model(llama_model_load_from_file(filename.c_str(),mp),llama_model_free);
   if(!model)throw std::runtime_error(stop?"Остановлено.":"Не удалось загрузить модель. Проверь свободную память.");

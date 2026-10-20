@@ -16,11 +16,11 @@ def download(url,path):
         except Exception:
             if attempt==2:raise
             time.sleep(3)
-download(base+"qwen2.5-1.5b-instruct-q4_k_m.gguf",root/"model.gguf")
+if not (root/"model.gguf").exists():download(base+"qwen2.5-1.5b-instruct-q4_k_m.gguf",root/"model.gguf")
 with open(root/"model.gguf","rb") as stream:
     assert stream.read(4)==b"GGUF","Invalid GGUF model"
 with open(root/"model.gguf","rb") as stream:digest=hashlib.file_digest(stream,"sha256").hexdigest()
-assert (root/"model.gguf").stat().st_size>1000000000
+assert digest=="6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e", "Model integrity mismatch"
 print("Model:",(root/"model.gguf").stat().st_size,"bytes; sha256",digest,flush=True)
 download(base+"LICENSE",lic/"QWEN-LICENSE.txt")
 (lic/"LLAMA-LICENSE.txt").write_bytes(pathlib.Path("vendor/llama.cpp/LICENSE").read_bytes())
@@ -37,7 +37,7 @@ class Extract(HTMLParser):
         if not self.skip:self.text.append(data)
 def get_text(url):
     req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0"})
-    with urllib.request.urlopen(req,timeout=35) as r:
+    with urllib.request.urlopen(req,timeout=15) as r:
         raw=r.read(12*1024*1024);charset=r.headers.get_content_charset()
     if not charset:
         m=re.search(br'charset=["\s]*([a-zA-Z0-9_-]+)',raw[:20000]);charset=m.group(1).decode() if m else "utf-8"
@@ -45,9 +45,9 @@ def get_text(url):
     if html.count("\ufffd")>100:html=raw.decode("cp1251",errors="replace")
     p=Extract();p.feed(html);return re.sub(r"[ \t\xa0]+"," ","".join(p.text))
 urls=[
- "https://pravo.gov.ru/proxy/ips/?doc_itself=&nd=102118429&page=1&rdk=0",
+ "http://pravo.gov.ru/proxy/ips/?docbody=&nd=102118429",
  "http://pravo.gov.ru/proxy/ips/?doc_itself=&nd=102118429&page=1&rdk=0",
- "https://www.kremlin.ru/acts/bank/26528/page/all",
+ "https://pravo.gov.ru/proxy/ips/?docbody=&nd=102118429",
  "http://www.kremlin.ru/acts/bank/26528/page/all"
 ]
 markers=[
@@ -59,8 +59,11 @@ documents=[];errors=[]
 for url in urls:
     try:
         text=get_text(url);found=[]
+        print('Source characters:',len(text),'heading context:',text[:500],flush=True)
+        pathlib.Path('SOURCE_DIAGNOSTIC.txt').write_text(text,encoding='utf-8')
         for ident,name,pattern in markers:
             matches=list(re.finditer(pattern,text))
+            if not matches:matches=list(re.finditer(pattern,text,re.I))
             if not matches:raise ValueError("Missing heading: "+name)
             found.append((matches[-1].start(),ident,name))
         found.sort()
@@ -72,7 +75,26 @@ for url in urls:
         break
     except Exception as error:
         documents=[];errors.append({"url":url,"error":str(error)});print("Source unavailable:",url,str(error),flush=True)
+if not documents:
+    # Public-domain enacted texts, archived university copy; explicitly labelled original 2007 edition.
+    from pypdf import PdfReader
+    from urllib.parse import quote
+    fallback="https://smolgu.ru/science/"+quote("Устав внутренней службы ВС РФ.pdf")
+    try:
+        download(fallback,pathlib.Path("internal-2007.pdf"))
+        reader=PdfReader("internal-2007.pdf")
+        text="\n".join(p.extract_text() or "" for p in reader.pages)
+        # Keep statutory text and appendices, remove the title pages.
+        start=text.find("Настоящий Устав")
+        if start<0:raise ValueError("Missing statute preamble")
+        text=text[start:]
+        count=len(re.findall(r"(?m)^\s*\d+(?:\.\d+)*\.\s",text))
+        if count<300:raise ValueError("Incomplete archive")
+        documents.append({"id":"internal-2007-archive","name":"Устав внутренней службы • архив 2007","source":fallback,"note":"Архивная редакция: издание Воениздата, 2007. НЕ подтверждена как действующая. Для изучения актуальных норм импортируй нужную редакцию.","text":text})
+        print("Archive paragraphs:",count,flush=True)
+    except Exception as error:errors.append({"url":fallback,"error":str(error)})
 status="" if documents else "Не удалось загрузить официальные тексты при сборке. Добавь TXT через библиотеку."
 (root/"corpus.json").write_text(json.dumps({"documents":documents,"status":status},ensure_ascii=False),encoding="utf-8")
 pathlib.Path("ASSET_REPORT.json").write_text(json.dumps({"model_sha256":digest,"documents":[{"name":d["name"],"characters":len(d["text"])} for d in documents],"source_errors":errors},ensure_ascii=False,indent=2),encoding="utf-8")
 print("Bundled documents:",len(documents),flush=True)
+print(pathlib.Path("ASSET_REPORT.json").read_text(),flush=True)
