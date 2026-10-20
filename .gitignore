@@ -1,0 +1,8 @@
+.gradle/
+**/build/
+**/.cxx/
+local.properties
+vendor/
+*.gguf
+app/src/main/assets/corpus.json
+app/src/main/assets/licenses/

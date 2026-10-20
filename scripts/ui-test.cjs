@@ -1,0 +1,27 @@
+const { chromium }=require("playwright");
+const assert=require("node:assert/strict");
+const {pathToFileURL}=require("node:url");
+const {resolve}=require("node:path");
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+ const context=await browser.newContext({viewport:{width:412,height:915},offline:true});
+ const page=await context.newPage();const errors=[];page.on("pageerror",e=>errors.push(e.message));
+ await page.addInitScript(()=>{window.Phone={loadCorpus(){window.dispatchEvent(new CustomEvent("corpus",{detail:{documents:[{id:"fixture",name:"Тестовый документ — не устав",text:"Введение\n1. Учёт личного состава\n12. Обязанности для теста\n12.1. Подпункт для теста\n120. Четвёртый пункт",source:"Синтетические тестовые данные",note:"Только для проверки приложения"}]}}))},importText(){},cancelAi(){}}});
+ await page.goto(pathToFileURL(resolve("app/src/main/assets/index.html")).href);
+ await page.locator("#query").fill("ст. 12");await page.waitForTimeout(250);
+ assert.equal(await page.locator(".result").count(),1);
+ assert.match(await page.locator(".result").innerText(),/Обязанности/);
+ await page.locator("#query").fill("учет СОСТАВА");await page.waitForTimeout(250);assert.equal(await page.locator(".result").count(),1);
+ await page.locator(".result").click();await page.locator("#bookmark").click();
+ await page.locator("[data-tab=saved]").click();assert.equal(await page.locator("#bookmarks .result").count(),1);
+ await page.reload();await page.locator("[data-tab=saved]").click();assert.equal(await page.locator("#bookmarks .result").count(),1);
+ await page.locator("[data-tab=learn]").click();assert.equal(await page.locator("#quiz button").count(),4);
+ const result=await page.evaluate(()=>{
+  const t=window.UstavyTest,p=t.parse("Введение\n1. Начало\nпродолжение\n12.1. Текст\nСтатья 13. Финал");
+  return {parts:p.length,decimal:p[2].number,exact:t.matches({number:"120",text:"120. Текст"},"12"),yo:t.matches({number:"1",text:"УЧЁТ состава"},"учет")};
+ });
+ assert.deepEqual(result,{parts:4,decimal:"12.1",exact:false,yo:true});assert.deepEqual(errors,[]);
+ console.log("PASS: offline search, exact article number, Russian normalization, bookmarks persistence, quiz, paragraph splitting.");
+ }finally{await browser.close()}
+})().catch(e=>{console.error(e);process.exit(1)});

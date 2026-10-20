@@ -1,0 +1,60 @@
+name: Build offline Android APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: android-main
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.0.13004108" "cmake;3.22.1"
+      - name: Fetch pinned inference engine
+        run: |
+          mkdir -p vendor/llama.cpp
+          curl --fail --location --retry 3 https://github.com/ggml-org/llama.cpp/archive/4a45de4f2c68f3d144f6c2431ad7c1da7e53c99e.tar.gz | tar xz --strip-components=1 -C vendor/llama.cpp
+      - name: Prepare offline assets
+        run: python3 scripts/prepare_assets.py
+      - name: Test offline interface
+        run: |
+          npm install --prefix /tmp/ustavy-tests playwright@1.56.1
+          /tmp/ustavy-tests/node_modules/.bin/playwright install --with-deps chromium
+          NODE_PATH=/tmp/ustavy-tests/node_modules node scripts/ui-test.cjs
+      - name: Build APK
+        run: gradle :app:assembleDebug --stacktrace --max-workers=2
+      - name: Verify signature and offline manifest
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions app/build/outputs/apk/debug/app-debug.apk > permissions.txt
+          if grep -q android.permission.INTERNET permissions.txt; then exit 1; fi
+          cp app/build/outputs/apk/debug/app-debug.apk ustavy-offline.apk
+          sha256sum ustavy-offline.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ustavy-offline
+          path: |
+            ustavy-offline.apk
+            SHA256SUMS.txt
+            ASSET_REPORT.json
+          compression-level: 0
+          retention-days: 7
+      - name: Publish installable test build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_number }}" ustavy-offline.apk SHA256SUMS.txt ASSET_REPORT.json --title "Уставы офлайн — сборка ${{ github.run_number }}" --notes "Тестовая Android ARM64 APK со встроенной моделью Qwen2.5 1.5B. Без разрешения INTERNET. Состав встроенных текстов указан в ASSET_REPORT.json. Проверка на реальном Samsung S25 Ultra ещё требуется." --prerelease --target "${{ github.sha }}"

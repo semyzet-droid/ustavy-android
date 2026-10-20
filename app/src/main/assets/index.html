@@ -1,0 +1,153 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none';">
+<title>Уставы ВС РФ</title><style>
+:root{font-family:system-ui,sans-serif;color:#e9f0e4;background:#101914;color-scheme:dark}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}
+main{max-width:860px;margin:auto;padding:22px 16px 40px}header{display:flex;justify-content:space-between;align-items:center;gap:10px}h1{font-size:29px;margin:7px 0}h2{font-size:22px}p{line-height:1.6}.eyebrow{font-size:11px;letter-spacing:2px;color:#b9d392}.badge{padding:7px 10px;border:1px solid #496044;border-radius:24px;font-size:12px;color:#c4e49e}
+nav{display:flex;gap:7px;overflow:auto;padding:16px 0}button{border:1px solid #405443;border-radius:12px;padding:11px 14px;background:#243629;color:#edf2e8}nav button{white-space:nowrap;background:transparent}nav button.active,.primary{background:#c4e49e;color:#172411;border-color:#c4e49e}
+.card{background:#1a281e;border:1px solid #344838;border-radius:17px;padding:17px;margin:12px 0}.muted{color:#a9bba9;font-size:14px;line-height:1.6}.tiny{color:#a9bba9;font-size:12px;line-height:1.6}
+.controls{display:grid;grid-template-columns:1fr 210px;gap:10px}input,select,textarea{background:#111e16;border:1px solid #445b46;color:#eef4ea;border-radius:12px;padding:13px;width:100%}
+.result{width:100%;text-align:left;display:block;margin:10px 0;background:#1a281e;padding:17px}.result strong{display:block;margin:8px 0}.result small{color:#b9d392}.snippet{font-size:14px;line-height:1.6;color:#b7c8b5}
+mark{color:#172411;background:#d2e5a3;border-radius:3px}.empty{text-align:center;color:#a9bba9;padding:30px 5px;line-height:1.7}
+.notice{background:#283626;border-left:3px solid #b9d392;padding:12px 15px;margin:15px 0;line-height:1.6;font-size:13px}
+.hidden{display:none!important}.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;justify-content:space-between}.reader{white-space:pre-wrap;line-height:1.85;font-size:18px;overflow-wrap:anywhere}
+#status{min-height:22px;font-size:12px;color:#bdd79e;margin:5px 0}.answer{white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
+dialog{background:#15221a;color:#edf2e8;border:1px solid #4f654d;border-radius:18px;width:calc(100% - 28px);max-width:700px;max-height:85vh;padding:20px}dialog::backdrop{background:#000b}dialog .answer{max-height:53vh;overflow:auto}
+:focus-visible{outline:3px solid #c4e49e;outline-offset:3px}@media(max-width:560px){.controls{grid-template-columns:1fr}}
+</style></head><body><main>
+<header><div><div class="eyebrow">ЛИЧНЫЙ УЧЕБНИК</div><h1>Уставы ВС РФ</h1></div><span class="badge">Без интернета</span></header>
+<div id="status" role="status" aria-live="polite">Подготавливаю библиотеку…</div>
+<nav aria-label="Разделы"><button class="active" data-tab="search">Поиск</button><button data-tab="library">Библиотека</button><button data-tab="saved">Закладки</button><button data-tab="learn">Учить</button><button data-tab="ai">ИИ</button></nav>
+<section id="search"><h2>Найти слово или пункт</h2><div class="controls"><input id="query" type="search" placeholder="Обязанности или пункт 12" aria-label="Поисковый запрос"><select id="scope" aria-label="Выбор устава"><option value="">Все документы</option></select></div><p class="tiny">Номер ищется точно: 12, 12.1, ст. 12, пункт 12. При поиске текста учитываются все введённые слова, без различия регистра и ё/е.</p><div id="results"></div></section>
+<section id="library" class="hidden"><h2>Твоя библиотека</h2><button class="primary" id="import">Добавить TXT с телефона</button><p class="muted">Импорт: текст UTF-8, до 5 МБ. Поиск работает по встроенным и добавленным документам.</p><div class="notice">Встроенные тексты — снимок источника с указанной датой. Актуальность редакции на сегодня отдельно не подтверждена. Строевой устав можно добавить через импорт.</div><div id="documents"></div><p class="tiny">Документы, закладки и прогресс сохраняются на телефоне. Удаление приложения или очистка его данных удалит эти записи.</p></section>
+<section id="saved" class="hidden"><h2>Закладки</h2><div id="bookmarks"></div></section>
+<section id="learn" class="hidden"><h2>Повторение по номерам</h2><div id="progress" class="muted"></div><div id="quiz"></div></section>
+<section id="ai" class="hidden"><h2>Помощник по уставам</h2><div class="card"><span class="badge">ИИ на телефоне</span><p>Найди статью и открой её. Нажми «Объяснить с ИИ» или задай вопрос по её тексту.</p><p class="muted">Модель Qwen2.5 1.5B включена в приложение. При первом запуске ИИ потребуется ещё около 1,2 ГБ для распаковки. Ответ может содержать ошибки — сверяй с источником.</p><button id="findSource">Найти статью</button></div></section>
+<section id="detail" class="hidden"><div class="row"><button id="back">← Назад</button><button id="bookmark">В закладки</button></div><p id="detailDoc" class="muted"></p><h2 id="detailTitle"></h2><p id="detailNote" class="tiny"></p><article id="detailBody" class="reader"></article><div class="card"><h2>Разобрать с помощником</h2><textarea id="question" rows="2" maxlength="500" placeholder="Объясни простыми словами: что нужно запомнить?" aria-label="Вопрос по статье"></textarea><p><button class="primary" id="explain">Объяснить с ИИ</button></p><p class="tiny">ИИ получает только показанный пункт. Если в нём нет ответа, сведений может быть недостаточно.</p></div></section>
+<dialog id="aiDialog"><div class="row"><b>Объяснение ИИ</b><button id="closeAi">Остановить</button></div><p id="aiSource" class="tiny"></p><div id="aiAnswer" class="answer" role="status"></div><div class="notice">Это объяснение модели. Официальный текст — в статье.</div></dialog>
+</main><script>
+(()=>{
+"use strict";
+const $=id=>document.getElementById(id),key="ustavy-v1";
+const norm=s=>String(s).toLocaleLowerCase("ru").replace(/ё/g,"е");
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let docs=[],userDocs=[],saved=[],read=[],correct=0,attempts=0,current=null,tab="search",timer,aiId="",aiBusy=false;
+try{const d=JSON.parse(localStorage.getItem(key)||"null");if(d){userDocs=Array.isArray(d.docs)?d.docs:[];saved=d.saved||[];read=d.read||[];correct=d.correct||0;attempts=d.attempts||0;}}catch(e){$("status").textContent="Не удалось восстановить сохранённые данные."}
+function persist(){try{localStorage.setItem(key,JSON.stringify({docs:userDocs,saved,read,correct,attempts}));return true}catch(e){$("status").textContent="Не удалось сохранить изменения: возможно, хранилище заполнено.";return false}}
+function parse(text){
+ const out=[];let number="",buffer=[];
+ const flush=()=>{const value=buffer.join("\n").trim();if(value)out.push({number,text:value});buffer=[]};
+ for(const line of text.replace(/\r\n?/g,"\n").split("\n")){
+  const m=line.match(/^\s*(?:(?:статья|пункт|ст\.|п\.)\s+(\d+(?:\.\d+)*)(?=[\s.:)]|$)|(\d+(?:\.\d+)*)[.)](?=\s|$))/i);
+  if(m){flush();number=m[1]||m[2]}buffer.push(line);
+ }flush();return out;
+}
+function numberQuery(q){const m=norm(q.trim()).match(/^(?:(?:статья|статьи|ст\.?|пункт|пункта|п\.?|№)\s*)?(\d+(?:\.\d+)*)\.?$/);return m?m[1]:null}
+function matches(p,q){if(!q.trim())return true;const n=numberQuery(q);return n!==null?p.number===n:norm(q.trim()).split(/\s+/).every(t=>norm(p.text).includes(t))}
+function prepare(d){if(!d||typeof d.id!=="string"||typeof d.name!=="string"||typeof d.text!=="string")return null;return {...d,parts:parse(d.text)}}
+docs=userDocs.map(prepare).filter(Boolean);
+function all(){return docs.flatMap(d=>d.parts.map((p,i)=>({...p,doc:d.name,docId:d.id,source:d.source||"Импорт с телефона",note:d.note||"Редакция не проверена",id:d.id+":"+i})))}
+function show(name){
+ tab=name;$("detail").classList.add("hidden");
+ ["search","library","saved","learn","ai"].forEach(n=>$(n).classList.toggle("hidden",n!==name));
+ document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
+ render();window.scrollTo(0,0);
+}
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>show(b.dataset.tab));
+function highlight(s){
+ const q=$("query").value.trim();if(!q||numberQuery(q)!==null)return esc(s);
+ const normalized=norm(s),ranges=[];
+ for(const t of norm(q).split(/\s+/)){let pos=0,i;while((i=normalized.indexOf(t,pos))!==-1){ranges.push([i,i+t.length]);pos=i+t.length}}
+ ranges.sort((a,b)=>a[0]-b[0]);const merged=[];
+ for(const r of ranges){const prev=merged[merged.length-1];if(prev&&r[0]<=prev[1])prev[1]=Math.max(prev[1],r[1]);else merged.push(r.slice())}
+ let out="",at=0;for(const [a,b] of merged){out+=esc(s.slice(at,a))+"<mark>"+esc(s.slice(a,b))+"</mark>";at=b}return out+esc(s.slice(at));
+}
+function cards(parent,items,empty){
+ parent.replaceChildren();if(!items.length){const e=document.createElement("p");e.className="empty";e.textContent=empty;parent.append(e);return}
+ for(const p of items.slice(0,100)){
+  const b=document.createElement("button");b.className="result";
+  let start=0;const q=$("query").value.trim();if(q&&numberQuery(q)===null){const i=norm(p.text).indexOf(norm(q).split(/\s+/)[0]);if(i>70)start=i-50}
+  const snippet=(start?"…":"")+p.text.slice(start,start+230)+(p.text.length>start+230?"…":"");
+  b.innerHTML="<small>"+esc(p.doc)+"</small><strong>"+esc(p.number?"Статья / пункт "+p.number:"Вводный текст / раздел")+"</strong><div class='snippet'>"+highlight(snippet)+"</div>";
+  b.onclick=()=>open(p);parent.append(b);
+ }
+}
+function search(){
+ const scope=$("scope").value,q=$("query").value;
+ const found=all().filter(p=>(!scope||p.docId===scope)&&matches(p,q));
+ cards($("results"),found,docs.length?"Совпадений нет. Попробуй другое слово или проверь документ.":"Пока нет документов. Открой библиотеку и добавь TXT.");
+ if(found.length){const count=document.createElement("p");count.className="tiny";count.textContent="Найдено: "+found.length+(found.length>100?" • показаны первые 100":"");$("results").prepend(count)}
+}
+$("query").oninput=()=>{clearTimeout(timer);timer=setTimeout(search,150)};$("scope").onchange=search;
+function open(p){
+ current=p;if(!read.includes(p.id)){read.push(p.id);persist()}
+ ["search","library","saved","learn","ai"].forEach(n=>$(n).classList.add("hidden"));$("detail").classList.remove("hidden");
+ $("detailDoc").textContent=p.doc;$("detailTitle").textContent=p.number?"Статья / пункт "+p.number:"Раздел";
+ $("detailNote").textContent=p.note+"\nИсточник: "+p.source;$("detailBody").innerHTML=highlight(p.text);
+ $("question").value="";bookmarkLabel();window.scrollTo(0,0);
+}
+function bookmarkLabel(){$("bookmark").textContent=saved.includes(current.id)?"Убрать закладку":"В закладки"}
+$("bookmark").onclick=()=>{if(!current)return;saved=saved.includes(current.id)?saved.filter(id=>id!==current.id):[...saved,current.id];persist();bookmarkLabel()};
+$("back").onclick=()=>show(tab);
+$("findSource").onclick=()=>show("search");
+$("import").onclick=()=>{if(window.Phone)Phone.importText();else $("status").textContent="Импорт доступен в установленном Android-приложении."};
+window.addEventListener("importerror",e=>$("status").textContent=e.detail.message);
+window.addEventListener("imported",e=>{
+ const d={id:"user-"+Date.now()+"-"+Math.random().toString(36).slice(2),name:e.detail.name,text:e.detail.text,note:"Импортирован пользователем. Редакция не проверена.",source:"TXT с телефона"};
+ userDocs.push(d);if(!persist()){userDocs.pop();return}docs.push(prepare(d));$("status").textContent="Документ добавлен";show("library");
+});
+window.addEventListener("corpus",e=>{
+ const corpus=e.detail;const bundled=(corpus.documents||[]).map(prepare).filter(Boolean);docs=[...bundled,...userDocs.map(prepare).filter(Boolean)];
+ $("status").textContent=corpus.status||("Без интернета • документов: "+docs.length);render();
+});
+function quiz(){
+ $("progress").textContent="Прочитано: "+read.length+" • Верных ответов: "+correct+" / "+attempts;
+ const area=$("quiz");area.replaceChildren();const numbered=all().filter(p=>p.number);
+ const groups=docs.map(d=>numbered.filter(p=>p.docId===d.id)).filter(g=>new Set(g.map(p=>p.number)).size>=4);
+ if(!groups.length){area.textContent="Для повторения нужен документ с четырьмя разными номерами пунктов.";return}
+ const group=groups[Math.floor(Math.random()*groups.length)],p=group[Math.floor(Math.random()*group.length)];
+ const choices=[p.number],pool=group.map(p=>p.number).filter(n=>n!==p.number);
+ while(choices.length<4){const n=pool.splice(Math.floor(Math.random()*pool.length),1)[0];if(!choices.includes(n))choices.push(n)}
+ for(let i=choices.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]]}
+ const card=document.createElement("div");card.className="card";
+ const passage=p.text.replace(/^\s*(?:(?:статья|пункт)\s+)?\d+(?:\.\d+)*[.)]?\s*/i,"");
+ card.innerHTML="<small class='muted'>"+esc(p.doc)+"</small><h2>Какой номер у пункта?</h2><p>"+esc(passage.slice(0,500))+"</p>";
+ let answered=false;
+ for(const n of choices){const b=document.createElement("button");b.style.margin="4px";b.textContent="Пункт "+n;b.onclick=()=>{
+  if(answered)return;answered=true;attempts++;if(n===p.number)correct++;persist();
+  const answer=document.createElement("p");answer.textContent=n===p.number?"Верно!":"Правильный ответ: "+p.number;card.append(answer);
+  const source=document.createElement("button");source.textContent="Открыть источник";source.onclick=()=>open(p);card.append(source);
+  const next=document.createElement("button");next.textContent="Следующий";next.onclick=quiz;card.append(next);
+  $("progress").textContent="Прочитано: "+read.length+" • Верных ответов: "+correct+" / "+attempts;
+ };card.append(b)}area.append(card);
+}
+function render(){
+ const selected=$("scope").value;$("scope").innerHTML='<option value="">Все документы</option>';
+ for(const d of docs){const o=document.createElement("option");o.value=d.id;o.textContent=d.name;$("scope").append(o)}
+ $("scope").value=docs.some(d=>d.id===selected)?selected:"";search();
+ cards($("bookmarks"),all().filter(p=>saved.includes(p.id)),"Сохранённых статей пока нет.");
+ $("documents").replaceChildren();
+ for(const d of docs){
+  const c=document.createElement("div");c.className="card";c.innerHTML="<b>"+esc(d.name)+"</b><p class='muted'>"+esc(d.note||"Редакция не проверена")+"</p><p class='tiny'>Разделов: "+d.parts.length+"</p>";
+  const b=document.createElement("button");b.textContent="Открыть";b.onclick=()=>{show("search");$("scope").value=d.id;$("query").value="";search()};c.append(b);$("documents").append(c);
+ }if(tab==="learn")quiz();
+}
+$("explain").onclick=()=>{
+ if(!current)return;
+ if(aiBusy){$("status").textContent="Дождись завершения предыдущего запроса.";return}
+ if(current.text.length>6500){$("status").textContent="Раздел слишком длинный для ИИ. Выбери отдельный пункт до 6500 символов.";return}
+ aiId=Date.now().toString();aiBusy=true;$("aiSource").textContent=current.doc+", статья / пункт "+current.number;
+ $("aiAnswer").textContent="Подготавливаю ответ…";$("closeAi").textContent="Остановить";$("aiDialog").showModal();
+ if(window.Phone)Phone.explain(aiId,$("aiSource").textContent,current.text,$("question").value.trim()||"Объясни простыми словами и выдели три главных положения.");
+ else{aiBusy=false;$("aiAnswer").textContent="ИИ доступен в Android-приложении с локальной моделью."}
+};
+window.addEventListener("ai",e=>{
+ if(e.detail.id!==aiId)return;$("aiAnswer").textContent=e.detail.text;
+ aiBusy=e.detail.status!=="done";$("closeAi").textContent=aiBusy?"Остановить":"Закрыть";
+});
+function closeAi(){if(aiBusy&&window.Phone)Phone.cancelAi();$("aiDialog").close()}
+$("closeAi").onclick=closeAi;$("aiDialog").addEventListener("cancel",()=>{if(aiBusy&&window.Phone)Phone.cancelAi()});
+window.goBack=()=>{if($("aiDialog").open){closeAi();return}if(!$("detail").classList.contains("hidden"))show(tab);else show("search")};
+window.UstavyTest={parse,matches,numberQuery};
+render();if(window.Phone)Phone.loadCorpus();
+})();
+</script></body></html>
