@@ -82,7 +82,9 @@ public final class BookStore {
   JSONArray all=new JSONArray(read(manifest,12*1024*1024));JSONArray images=all.optJSONArray(page);if(images==null)return result;
   for(int i=0;i<images.length();i++){JSONObject image=images.getJSONObject(i);String name=image.getString("file");int at=image.getInt("pos");if(!name.matches("[a-f0-9-]{36}\\.img")||at<0||at>=text.length()||text.charAt(at)!='\uFFFC')continue;
    try{android.graphics.Bitmap bitmap=OcrEngine.decodeImage(new File(path(id,"-media"),name));
-    int w=Math.min(Math.max(100,width),bitmap.getWidth()),h=Math.max(1,(int)((double)bitmap.getHeight()*w/bitmap.getWidth()));
+    float scale=Math.min(1,Math.min(Math.min(1000,Math.max(100,width))/(float)bitmap.getWidth(),2000f/bitmap.getHeight()));
+    int w=Math.max(1,Math.round(bitmap.getWidth()*scale)),h=Math.max(1,Math.round(bitmap.getHeight()*scale));
+    if(w!=bitmap.getWidth()||h!=bitmap.getHeight()){android.graphics.Bitmap small=android.graphics.Bitmap.createScaledBitmap(bitmap,w,h,true);if(small!=bitmap)bitmap.recycle();bitmap=small;}
     android.graphics.drawable.BitmapDrawable drawable=new android.graphics.drawable.BitmapDrawable(context.getResources(),bitmap);drawable.setBounds(0,0,w,h);
     result.setSpan(new android.text.style.ImageSpan(drawable),at,at+1,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
    }catch(IOException ignored){}

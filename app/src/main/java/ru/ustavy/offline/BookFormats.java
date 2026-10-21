@@ -55,7 +55,18 @@ final class BookFormats {
    for(ImageSpan span:content.getSpans(0,content.length(),ImageSpan.class)){String source=span.getSource();try{
     String image=normalize(dir+android.net.Uri.decode(source.split("#",2)[0]));String saved=saveImage(entries.get(image));if(saved!=null)pictures.put(new JSONObject().put("pos",content.getSpanStart(span)).put("file",saved));
    }catch(Exception ignored){}}
-   pages.put(text);images.put(pictures);
+   appendPages(text,pictures);
+  }
+ }
+ private void appendPages(String text,JSONArray pictures)throws Exception{
+  int start=0;while(start<text.length()){
+   int end=Math.min(text.length(),start+20000),count=0;
+   for(int i=0;i<pictures.length();i++){int at=pictures.getJSONObject(i).getInt("pos");if(at>=start&&at<end&&++count>10){end=at;break;}}
+   if(end<text.length()&&end-start>10000){int line=text.lastIndexOf('\n',end-1);if(line>start+10000)end=line+1;}
+   if(end>start&&end<text.length()&&Character.isHighSurrogate(text.charAt(end-1)))end--;
+   if(end<=start)end=Math.min(text.length(),start+1);
+   JSONArray local=new JSONArray();for(int i=0;i<pictures.length();i++){JSONObject image=pictures.getJSONObject(i);int at=image.getInt("pos");if(at>=start&&at<end)local.put(new JSONObject().put("pos",at-start).put("file",image.getString("file")));}
+   if(pages.length()>=1000)throw new IOException("В книге более 1000 разделов.");pages.put(text.substring(start,end));images.put(local);start=end;
   }
  }
  private String saveImage(byte[] bytes)throws Exception{
@@ -66,7 +77,7 @@ final class BookFormats {
   XmlPullParser parser=xml(data);StringBuilder text=new StringBuilder();ArrayList<String[]> references=new ArrayList<>();Map<String,String> binaries=new HashMap<>();int body=0;
   for(int event=parser.next();event!=XmlPullParser.END_DOCUMENT;event=parser.next()){
    if(event==XmlPullParser.START_TAG){String tag=parser.getName();if(tag.equals("body")){body++;continue;}
-    if(tag.equals("binary")){String id=attr(parser,"id");String encoded=parser.nextText();try{String image=saveImage(Base64.decode(encoded,Base64.DEFAULT));if(image!=null)binaries.put(id,image);}catch(Exception ignored){}continue;}
+    if(tag.equals("binary")){String id=attr(parser,"id");String encoded=parser.nextText();try{String image=saveImage(android.util.Base64.decode(encoded,android.util.Base64.DEFAULT));if(image!=null)binaries.put(id,image);}catch(Exception ignored){}continue;}
     if(body>0){if(tag.equals("image")){String href=attr(parser,"href");references.add(new String[]{String.valueOf(text.length()),href.startsWith("#")?href.substring(1):href});text.append('\uFFFC');}
      else if(tag.matches("p|title|subtitle|section|stanza|v|empty-line"))text.append('\n');
     }
@@ -77,6 +88,6 @@ final class BookFormats {
   if(text.toString().trim().isEmpty())throw new IOException("В FB2 нет текста.");
   JSONArray pictures=new JSONArray();for(String[] ref:references)if(binaries.containsKey(ref[1]))pictures.put(new JSONObject().put("pos",Integer.parseInt(ref[0])).put("file",binaries.get(ref[1])));
   // FB2 is a continuous scroll book; EPUB follows its explicit chapter spine.
-  pages.put(text.toString());images.put(pictures);
+  appendPages(text.toString(),pictures);
  }
 }
