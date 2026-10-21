@@ -22,8 +22,8 @@ public class MainActivity extends Activity {
  @Override public void onCreate(Bundle state){
   super.onCreate(state);
   books=new BookStore(this);
-  getWindow().setStatusBarColor(0xff101914);getWindow().setNavigationBarColor(0xff101914);
-  web=new WebView(this);web.setBackgroundColor(0xff101914);
+  Appearance.systemBars(this);
+  web=new WebView(this);web.setBackgroundColor(Appearance.background(this));
   web.setOnApplyWindowInsetsListener((v,in)->{v.setPadding(in.getSystemWindowInsetLeft(),in.getSystemWindowInsetTop(),in.getSystemWindowInsetRight(),in.getSystemWindowInsetBottom());return in;});
   WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setBlockNetworkLoads(true);s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);
   web.addJavascriptInterface(new Bridge(),"Phone");
@@ -44,6 +44,13 @@ public class MainActivity extends Activity {
   JSONObject o=obj("id",id);try{o.put("status",status);o.put("text",text);}catch(Exception ignored){}emit("ai",o);
  }
  public class Bridge {
+  @JavascriptInterface public void loadAppearance(){worker.execute(()->{try{emit("appearance",Appearance.payload(MainActivity.this));}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});}
+  @JavascriptInterface public void saveAppearance(String scheme,String color,int strength){
+   try{Appearance.save(MainActivity.this,scheme,color,strength);runOnUiThread(()->{Appearance.systemBars(MainActivity.this);web.setBackgroundColor(Appearance.background(MainActivity.this));});}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}
+  }
+  @JavascriptInterface public void chooseWallpaper(){runOnUiThread(()->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");startActivityForResult(i,30);});}
+  @JavascriptInterface public void removeWallpaper(){worker.execute(()->{File file=Appearance.wallpaper(MainActivity.this);if(file.exists()&&!file.delete()){emit("importerror",obj("message","Не удалось убрать фон."));return;}loadAppearance();});}
+
   @JavascriptInterface public void loadBooks(){
    worker.execute(()->{try{
     JSONArray list=books.list();
@@ -104,7 +111,11 @@ public class MainActivity extends Activity {
  }
  @Override protected void onActivityResult(int request,int result,Intent data){
   super.onActivityResult(request,result,data);
+  if(request==30&&result==RESULT_OK&&data!=null&&data.getData()!=null){
+   Uri uri=data.getData();worker.execute(()->{try{Appearance.importWallpaper(this,getContentResolver().openInputStream(uri));new Bridge().loadAppearance();}catch(Throwable e){emit("importerror",obj("message","Не удалось установить фон: "+e.getMessage()));}});return;
+  }
   if(request==20){
+   new Bridge().loadAppearance();Appearance.systemBars(this);
    if(result==RESULT_OK&&data!=null){JSONObject passage=obj("text",data.getStringExtra("text"));try{passage.put("source",data.getStringExtra("source"));}catch(Exception ignored){}emit("bookpassage",passage);}
    new Bridge().loadBooks();return;
   }

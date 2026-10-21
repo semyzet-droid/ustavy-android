@@ -22,7 +22,7 @@ public final class BookActivity extends Activity {
  private Dialog activeDialog;private boolean ocrBusy=false;private PdfRenderer renderer;private ParcelFileDescriptor descriptor;
  @Override public void onCreate(Bundle state){
   super.onCreate(state);prefs=getSharedPreferences("reader",0);id=getIntent().getStringExtra("bookId");store=new BookStore(this);
-  try{book=store.get(id);kind=book.getString("kind");total=book.optInt("pages",1);page=Math.max(0,Math.min(total-1,prefs.getInt(id+":page",0)));font=prefs.getInt("font",20);theme=prefs.getInt("theme",0);}
+  try{book=store.get(id);kind=book.getString("kind");total=book.optInt("pages",1);page=Math.max(0,Math.min(total-1,prefs.getInt(id+":page",0)));font=prefs.getInt("font",20);}
   catch(Exception e){new AlertDialog.Builder(this).setMessage("Книга недоступна: "+e.getMessage()).setPositiveButton("Закрыть",(d,w)->finish()).setOnCancelListener(d->finish()).show();return;}
   root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(12),dp(8),dp(12),0);
   root.setOnApplyWindowInsetsListener((v,in)->{v.setPadding(dp(12)+in.getSystemWindowInsetLeft(),dp(8)+in.getSystemWindowInsetTop(),dp(12)+in.getSystemWindowInsetRight(),in.getSystemWindowInsetBottom());return in;});
@@ -40,7 +40,7 @@ public final class BookActivity extends Activity {
   }
   if(!kind.equals("txt")){bar.addView(button("Править текст",this::editCurrentText));bar.addView(button("ИИ",this::sendPassage));}
   if(kind.equals("image"))bar.addView(button("Текст / фото",()->{textMode=!textMode;if(textMode)showText(currentText.isEmpty()?"Нажми «Распознать текст» для чтения изображения.":currentText);else{scroll.setVisibility(View.GONE);picture.setVisibility(View.VISIBLE);}}));
-  {bar.addView(button("А−",()->font(-2)));bar.addView(button("А+",()->font(2)));bar.addView(button("Тема",()->{theme=(theme+1)%3;prefs.edit().putInt("theme",theme).apply();colors();}));}
+  {bar.addView(button("А−",()->font(-2)));bar.addView(button("А+",()->font(2)));bar.addView(button("Тема",()->{String[] schemes={"dark","light","sepia","black"};int index=java.util.Arrays.asList(schemes).indexOf(Appearance.scheme(this));Appearance.save(this,schemes[(index+1)%4],Appearance.prefs(this).getString("color","#233b50"),Appearance.prefs(this).getInt("strength",25));colors();}));}
   if(!kind.equals("txt")){bar.addView(button("−",()->picture.changeZoom(0.8f)));bar.addView(button("+",()->picture.changeZoom(1.25f)));}
   setContentView(root);colors();
   if(kind.equals("txt")){textMode=true;restoring=true;showText("");io.execute(()->{try{String text=store.pageText(id,0);runOnUiThread(()->{if(!isDestroyed()){showText(text);restoreScroll();}});}catch(Exception e){error(e);}});}
@@ -49,9 +49,7 @@ public final class BookActivity extends Activity {
  private int dp(int n){return (int)(n*getResources().getDisplayMetrics().density);}
  private Button button(String text,Runnable fn){Button b=new Button(this);b.setAllCaps(false);b.setText(text);b.setOnClickListener(v->fn.run());return b;}
  private void colors(){
-  int bg=theme==0?0xff111b15:theme==1?0xfffaf8f3:0xffefe2c6,fg=theme==0?0xffe8eee3:0xff29251f;
-  root.setBackgroundColor(bg);title.setTextColor(fg);status.setTextColor(fg);prose.setTextColor(fg);prose.setTextSize(font);getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);
-  if(Build.VERSION.SDK_INT>=23)getWindow().getDecorView().setSystemUiVisibility(theme==0?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+  int fg=Appearance.foreground(this);Appearance.readerBackground(this,root);title.setTextColor(fg);status.setTextColor(fg);prose.setTextColor(fg);prose.setTextSize(font);
  }
  private void font(int delta){font=Math.max(14,Math.min(34,font+delta));prefs.edit().putInt("font",font).apply();prose.setTextSize(font);if(!kind.equals("txt")&&!textMode){textMode=true;if(kind.equals("pdf"))loadPage();else showText(currentText);}}
  private void showText(String text){picture.setVisibility(View.GONE);scroll.setVisibility(View.VISIBLE);prose.setText(text);colors();if(kind.equals("txt"))status.setText("Режим чтения • позиция сохраняется автоматически");}

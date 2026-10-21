@@ -29,8 +29,24 @@ const {resolve}=require("node:path");
  await page.locator("[data-tab=search]").click();await page.locator("#query").fill("PDF needle");await page.waitForTimeout(250);
  assert.equal(await page.locator("#results .result").count(),1);await page.locator("#results .result").click();
  await page.locator("#readWhole").click();assert.equal(await page.evaluate(()=>window.openedBook),"pdf-fixture");
+ // Themes are readable, persistent, and independent of imported study data.
+ await page.locator("#appearanceButton").click();await page.locator('[data-scheme="light"]').click();
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--fg").trim()),"#20291f");
+ await page.locator("#closeAppearance").click();await page.reload();
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()),"#f7f8f4");
+ await page.locator("#appearanceButton").click();
+ await page.locator("#backgroundColor").fill("#faf0cc");await page.locator("#backgroundColor").dispatchEvent("input");
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()),"#faf0cc");
+ await page.locator("#closeAppearance").click();await page.reload();
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()),"#faf0cc");
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent("appearance",{detail:{image:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jp1sAAAAASUVORK5CYII=",strength:40}})));
+ assert.match(await page.evaluate(()=>getComputedStyle(document.body).backgroundImage),/^url\(/);
+ await page.locator("#appearanceButton").click();await page.locator("#removeWallpaper").click();
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.body).backgroundImage),"none");
+ await page.locator("#resetAppearance").click();assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()),"#101914");
+ await page.locator("#closeAppearance").click();await page.locator("[data-tab=saved]").click();assert.equal(await page.locator("#bookmarks .result").count(),1);
  assert.deepEqual(errors,[]);
- console.log("PASS: offline search, exact article number, Russian normalization, bookmarks persistence, quiz, paragraph splitting, book catalog, PDF text search and reader bridge.");
+ console.log("PASS: offline search, exact article number, Russian normalization, bookmarks persistence, quiz, paragraph splitting, book catalog, PDF text search reader bridge, theme persistence, custom color, wallpaper and reset.");
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
 

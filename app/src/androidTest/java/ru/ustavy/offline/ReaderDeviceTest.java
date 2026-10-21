@@ -120,6 +120,19 @@ public class ReaderDeviceTest {
    assertEquals(android.app.Activity.RESULT_OK,activity.getResult().getResultCode());assertTrue(activity.getResult().getResultData().getStringExtra("text").contains("42"));
   }
  }
+ @Test public void wallpaperIsCopiedAndInvalidReplacementKeepsSavedBackground()throws Exception{
+  Bitmap bitmap=Bitmap.createBitmap(80,60,Bitmap.Config.ARGB_8888);bitmap.eraseColor(Color.BLUE);ByteArrayOutputStream bytes=new ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.PNG,100,bytes);bitmap.recycle();
+  Appearance.importWallpaper(context,new ByteArrayInputStream(bytes.toByteArray()));
+  Appearance.save(context,"custom","#faf0cc",40);
+  try{
+   assertEquals("custom",Appearance.scheme(context));assertTrue(Appearance.light(context));
+   JSONObject payload=Appearance.payload(context);assertEquals(40,payload.getInt("strength"));assertTrue(payload.getString("image").startsWith("data:image/jpeg;base64,"));
+   long size=Appearance.wallpaper(context).length();
+   try{Appearance.importWallpaper(context,new ByteArrayInputStream(new byte[]{1,2,3}));fail("Broken image must fail");}catch(IOException expected){}
+   assertEquals(size,Appearance.wallpaper(context).length());
+   Bitmap stored=BitmapFactory.decodeFile(Appearance.wallpaper(context).toString());assertTrue(Color.blue(stored.getPixel(20,20))>240);stored.recycle();
+  }finally{Appearance.wallpaper(context).delete();Appearance.prefs(context).edit().clear().commit();}
+ }
  private Button findButton(View view,String label){
   if(view instanceof Button&&((Button)view).getText().toString().equals(label))return (Button)view;
   if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){Button b=findButton(group.getChildAt(i),label);if(b!=null)return b;}}return null;

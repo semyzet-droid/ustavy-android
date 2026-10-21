@@ -1,20 +1,21 @@
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none';">
 <title>Уставы ВС РФ</title><style>
-:root{font-family:system-ui,sans-serif;color:#e9f0e4;background:#101914;color-scheme:dark}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}
-main{max-width:860px;margin:auto;padding:22px 16px 40px}header{display:flex;justify-content:space-between;align-items:center;gap:10px}h1{font-size:29px;margin:7px 0}h2{font-size:22px}p{line-height:1.6}.eyebrow{font-size:11px;letter-spacing:2px;color:#b9d392}.badge{padding:7px 10px;border:1px solid #496044;border-radius:24px;font-size:12px;color:#c4e49e}
-nav{display:flex;gap:7px;overflow:auto;padding:16px 0}button{border:1px solid #405443;border-radius:12px;padding:11px 14px;background:#243629;color:#edf2e8}nav button{white-space:nowrap;background:transparent}nav button.active,.primary{background:#c4e49e;color:#172411;border-color:#c4e49e}
-.card{background:#1a281e;border:1px solid #344838;border-radius:17px;padding:17px;margin:12px 0}.muted{color:#a9bba9;font-size:14px;line-height:1.6}.tiny{color:#a9bba9;font-size:12px;line-height:1.6}
-.controls{display:grid;grid-template-columns:1fr 210px;gap:10px}input,select,textarea{background:#111e16;border:1px solid #445b46;color:#eef4ea;border-radius:12px;padding:13px;width:100%}
-.result{width:100%;text-align:left;display:block;margin:10px 0;background:#1a281e;padding:17px}.result strong{display:block;margin:8px 0}.result small{color:#b9d392}.snippet{font-size:14px;line-height:1.6;color:#b7c8b5}
-mark{color:#172411;background:#d2e5a3;border-radius:3px}.empty{text-align:center;color:#a9bba9;padding:30px 5px;line-height:1.7}
-.notice{background:#283626;border-left:3px solid #b9d392;padding:12px 15px;margin:15px 0;line-height:1.6;font-size:13px}
+:root{--bg:#101914;--fg:#e9f0e4;--surface:#1a281e;--field:#111e16;--button:#243629;--line:#405443;--muted:#a9bba9;--accent:#c4e49e;--accent-text:#172411;--notice:#283626;--veil:rgba(16,25,20,.75);--wallpaper:none;font-family:system-ui,sans-serif;color:var(--fg);background:var(--bg);color-scheme:dark}*{box-sizing:border-box}body{margin:0;background-color:var(--bg);background-image:var(--wallpaper);background-size:cover;background-position:center;background-attachment:fixed}button,input,select,textarea{font:inherit}button{cursor:pointer}
+main{min-height:100vh;background:var(--veil);max-width:860px;margin:auto;padding:22px 16px 40px}header{display:flex;justify-content:space-between;align-items:center;gap:10px}h1{font-size:29px;margin:7px 0}h2{font-size:22px}p{line-height:1.6}.eyebrow{font-size:11px;letter-spacing:2px;color:var(--accent)}.badge{padding:7px 10px;border:1px solid var(--line);border-radius:24px;font-size:12px;color:var(--accent)}
+nav{display:flex;gap:7px;overflow:auto;padding:16px 0}button{border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--button);color:var(--fg)}nav button{white-space:nowrap;background:transparent}nav button.active,.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:17px;padding:17px;margin:12px 0}.muted{color:var(--muted);font-size:14px;line-height:1.6}.tiny{color:var(--muted);font-size:12px;line-height:1.6}
+.controls{display:grid;grid-template-columns:1fr 210px;gap:10px}input,select,textarea{background:var(--field);border:1px solid var(--line);color:var(--fg);border-radius:12px;padding:13px;width:100%}
+.result{width:100%;text-align:left;display:block;margin:10px 0;background:var(--surface);padding:17px}.result strong{display:block;margin:8px 0}.result small{color:var(--accent)}.snippet{font-size:14px;line-height:1.6;color:var(--muted)}
+mark{color:var(--accent-text);background:var(--accent);border-radius:3px}.empty{text-align:center;color:var(--muted);padding:30px 5px;line-height:1.7}
+.notice{background:var(--notice);border-left:3px solid var(--accent);padding:12px 15px;margin:15px 0;line-height:1.6;font-size:13px}
 .hidden{display:none!important}.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;justify-content:space-between}.reader{white-space:pre-wrap;line-height:1.85;font-size:18px;overflow-wrap:anywhere}
-#status{min-height:22px;font-size:12px;color:#bdd79e;margin:5px 0}.answer{white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
-dialog{background:#15221a;color:#edf2e8;border:1px solid #4f654d;border-radius:18px;width:calc(100% - 28px);max-width:700px;max-height:85vh;padding:20px}dialog::backdrop{background:#000b}dialog .answer{max-height:53vh;overflow:auto}
-:focus-visible{outline:3px solid #c4e49e;outline-offset:3px}@media(max-width:560px){.controls{grid-template-columns:1fr}}
+#status{min-height:22px;font-size:12px;color:var(--accent);margin:5px 0}.answer{white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
+dialog{background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:18px;width:calc(100% - 28px);max-width:700px;max-height:85vh;padding:20px}dialog::backdrop{background:#000b}dialog .answer{max-height:53vh;overflow:auto}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}@media(max-width:560px){.controls{grid-template-columns:1fr}}
+#appearanceDialog label{display:block;margin:16px 0 7px}#appearanceDialog input[type=color]{height:50px;padding:5px}.theme-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.theme-options button[aria-pressed=true]{outline:3px solid var(--accent);outline-offset:1px}#appearancePreview{padding:16px;border-radius:12px;border:1px solid var(--line);margin:16px 0}
 </style></head><body><main>
-<header><div><div class="eyebrow">ЛИЧНЫЙ УЧЕБНИК</div><h1>Уставы ВС РФ</h1></div><span class="badge">Без интернета</span></header>
+<header><div><div class="eyebrow">ЛИЧНЫЙ УЧЕБНИК</div><h1>Уставы ВС РФ</h1></div><button id="appearanceButton" aria-label="Тема и фон">Тема и фон</button></header><span class="badge">Без интернета</span>
 <div id="status" role="status" aria-live="polite">Подготавливаю библиотеку…</div>
 <nav aria-label="Разделы"><button class="active" data-tab="search">Поиск</button><button data-tab="library">Библиотека</button><button data-tab="books">Книги</button><button data-tab="saved">Закладки</button><button data-tab="learn">Учить</button><button data-tab="ai">ИИ</button></nav>
 <section id="search"><h2>Найти слово или пункт</h2><div class="controls"><input id="query" type="search" placeholder="Обязанности или пункт 12" aria-label="Поисковый запрос"><select id="scope" aria-label="Выбор устава"><option value="">Все документы</option></select></div><p class="tiny">Номер ищется точно: 12, 12.1, ст. 12, пункт 12. При поиске текста учитываются все введённые слова, без различия регистра и ё/е.</p><div id="results"></div></section>
@@ -24,11 +25,45 @@ dialog{background:#15221a;color:#edf2e8;border:1px solid #4f654d;border-radius:1
 <section id="learn" class="hidden"><h2>Повторение по номерам</h2><div id="progress" class="muted"></div><div id="quiz"></div></section>
 <section id="ai" class="hidden"><h2>Помощник по уставам</h2><div class="card"><span class="badge">ИИ на телефоне</span><p>Найди статью и открой её. Нажми «Объяснить с ИИ» или задай вопрос по её тексту.</p><p class="muted">Модель Qwen2.5 1.5B включена в приложение. При первом запуске ИИ потребуется ещё около 1,2 ГБ для распаковки. Ответ может содержать ошибки — сверяй с источником.</p><button id="findSource">Найти статью</button></div></section>
 <section id="detail" class="hidden"><div class="row"><button id="back">← Назад</button><button id="bookmark">В закладки</button></div><button id="readWhole">Читать как книгу</button><p id="detailDoc" class="muted"></p><h2 id="detailTitle"></h2><p id="detailNote" class="tiny"></p><article id="detailBody" class="reader"></article><div class="card"><h2>Разобрать с помощником</h2><textarea id="question" rows="2" maxlength="500" placeholder="Объясни простыми словами: что нужно запомнить?" aria-label="Вопрос по статье"></textarea><p><button class="primary" id="explain">Объяснить с ИИ</button></p><p class="tiny">ИИ получает только показанный пункт. Если в нём нет ответа, сведений может быть недостаточно.</p></div></section>
+<dialog id="appearanceDialog" aria-labelledby="appearanceTitle"><div class="row"><h2 id="appearanceTitle">Тема и фон</h2><button id="closeAppearance">Готово</button></div><p class="muted">Настройки сохраняются автоматически и применяются к приложению и читалке.</p>
+<div class="theme-options"><button data-scheme="dark">Тёмная</button><button data-scheme="light">Светлая</button><button data-scheme="sepia">Тёплая</button><button data-scheme="black">Чёрная</button></div>
+<label for="backgroundColor">Свой цвет фона</label><input id="backgroundColor" type="color" value="#233b50">
+<div id="appearancePreview">Пример текста на выбранном фоне. Карточки сохраняют контраст.</div>
+<div class="row"><button id="chooseWallpaper">Картинка с телефона</button><button id="removeWallpaper">Убрать картинку</button></div><p id="wallpaperStatus" class="tiny">Картинка не выбрана</p>
+<label for="wallpaperStrength">Видимость картинки: <span id="strengthValue">25%</span></label><input id="wallpaperStrength" type="range" min="0" max="50" value="25"><p class="tiny">Поддерживаются JPG, PNG и WebP до 20 МБ. Фон копируется в приложение и работает без интернета. Исходные страницы PDF сохраняют свои цвета.</p><button id="resetAppearance">Сбросить оформление</button></dialog>
 <dialog id="aiDialog"><div class="row"><b>Объяснение ИИ</b><button id="closeAi">Остановить</button></div><p id="aiSource" class="tiny"></p><div id="aiAnswer" class="answer" role="status"></div><div class="notice">Это объяснение модели. Официальный текст — в статье.</div></dialog>
 </main><script>
 (()=>{
 "use strict";
 const $=id=>document.getElementById(id),key="ustavy-v1";
+let appearance={scheme:"dark",color:"#233b50",strength:25,image:""};
+const appearanceKey="ustavy-appearance-v1";
+try{const saved=JSON.parse(localStorage.getItem(appearanceKey)||"null");if(saved)appearance={...appearance,...saved};}catch(e){}
+function applyAppearance(save=false){
+ if(!["dark","light","sepia","black","custom"].includes(appearance.scheme))appearance.scheme="dark";
+ if(!/^#[a-f0-9]{6}$/i.test(appearance.color))appearance.color="#233b50";
+ appearance.strength=Math.max(0,Math.min(50,Number(appearance.strength)||0));
+ const bg=({dark:"#101914",light:"#f7f8f4",sepia:"#efe2c6",black:"#000000",custom:appearance.color})[appearance.scheme];
+ const n=parseInt(bg.slice(1),16),light=(299*(n>>16)+587*((n>>8)&255)+114*(n&255))/1000>155;
+ const props=light?{fg:"#20291f",surface:"#ffffff",field:"#ffffff",button:"#e1e7da",line:"#84917c",muted:"#4e5c47",accent:"#315c28","accent-text":"#ffffff",notice:"#e1e7da"}:{fg:"#e9f0e4",surface:"#1a281e",field:"#111e16",button:"#243629",line:"#6c816c",muted:"#b7c8b5",accent:"#c4e49e","accent-text":"#172411",notice:"#283626"};
+ const style=document.documentElement.style;for(const [key,value] of Object.entries({...props,bg,veil:`rgba(${n>>16},${(n>>8)&255},${n&255},${1-appearance.strength/100})`}))style.setProperty("--"+key,value);
+ const image=/^data:image\/(jpeg|png|webp);base64,[a-zA-Z0-9+/=]+$/.test(appearance.image||"")?appearance.image:"";
+ style.setProperty("--wallpaper",image?'url("'+image+'")':"none");document.documentElement.style.colorScheme=light?"light":"dark";
+ $("backgroundColor").value=appearance.color;$("wallpaperStrength").value=appearance.strength;$("strengthValue").textContent=appearance.strength+"%";
+ $("wallpaperStatus").textContent=image?"Своя картинка установлена":"Картинка не выбрана";$("removeWallpaper").disabled=!image;
+ $("appearancePreview").style.background=bg;$("appearancePreview").style.color=props.fg;
+ document.querySelectorAll("[data-scheme]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.scheme===appearance.scheme)));
+ if(save){try{localStorage.setItem(appearanceKey,JSON.stringify({...appearance,image:window.Phone?"":image}));}catch(e){$("status").textContent="Не удалось сохранить оформление.";}if(window.Phone&&Phone.saveAppearance)Phone.saveAppearance(appearance.scheme,appearance.color,appearance.strength);}
+}
+$("appearanceButton").onclick=()=>$("appearanceDialog").showModal();$("closeAppearance").onclick=()=>$("appearanceDialog").close();
+document.querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{appearance.scheme=b.dataset.scheme;applyAppearance(true)});
+$("backgroundColor").oninput=()=>{appearance.scheme="custom";appearance.color=$("backgroundColor").value;applyAppearance(true)};
+$("wallpaperStrength").oninput=()=>{appearance.strength=Number($("wallpaperStrength").value);applyAppearance(true)};
+$("chooseWallpaper").onclick=()=>{if(window.Phone&&Phone.chooseWallpaper)Phone.chooseWallpaper();else $("wallpaperStatus").textContent="Выбор картинки доступен в Android-приложении."};
+$("removeWallpaper").onclick=()=>{appearance.image="";applyAppearance(true);if(window.Phone&&Phone.removeWallpaper)Phone.removeWallpaper()};
+$("resetAppearance").onclick=()=>{appearance={scheme:"dark",color:"#233b50",strength:25,image:""};applyAppearance(true);if(window.Phone&&Phone.removeWallpaper)Phone.removeWallpaper()};
+window.addEventListener("appearance",e=>{appearance={...appearance,...e.detail};applyAppearance();});
+applyAppearance();
 const norm=s=>String(s).toLocaleLowerCase("ru").replace(/ё/g,"е");
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let bookDocuments=[],bookList=[];
@@ -148,7 +183,7 @@ window.addEventListener("ai",e=>{
 });
 function closeAi(){if(aiBusy&&window.Phone)Phone.cancelAi();$("aiDialog").close()}
 $("closeAi").onclick=closeAi;$("aiDialog").addEventListener("cancel",()=>{if(aiBusy&&window.Phone)Phone.cancelAi()});
-window.goBack=()=>{if($("aiDialog").open){closeAi();return}if(!$("detail").classList.contains("hidden"))show(tab);else show("search")};
+window.goBack=()=>{if($("appearanceDialog").open){$("appearanceDialog").close();return}if($("aiDialog").open){closeAi();return}if(!$("detail").classList.contains("hidden"))show(tab);else show("search")};
 
 function readBook(d){
  if(!window.Phone){$("status").textContent="Читалка доступна в Android-приложении.";return}
@@ -173,11 +208,11 @@ window.addEventListener("bookindexed",e=>{
 });
 window.addEventListener("importstatus",e=>$("status").textContent=e.detail.message);
 window.addEventListener("bookpassage",e=>{
- const p={id:"pdf-page-"+Date.now(),doc:e.detail.source,docId:"",number:"",text:e.detail.text,source:"Текст выбранной страницы PDF",note:"ИИ получает извлечённый текст страницы. Картинки не анализируются."};
+ const p={id:"pdf-page-"+Date.now(),doc:e.detail.source,docId:"",number:"",text:e.detail.text,source:"Текст выбранной страницы PDF",note:"ИИ получает текст страницы, включая сохранённый OCR. Возможны ошибки распознавания."};
  open(p);$("explain").click();
 });
 
 window.UstavyTest={parse,matches,numberQuery};
-render();if(window.Phone){Phone.loadCorpus();Phone.loadBooks();}
+render();if(window.Phone){Phone.loadCorpus();Phone.loadBooks();if(Phone.loadAppearance)Phone.loadAppearance();}
 })();
 </script></body></html>
