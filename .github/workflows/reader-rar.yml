@@ -1,0 +1,43 @@
+name: Package reader APK as RAR
+on:
+  push:
+    branches: [package-reader-rar]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  rar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Wait for verified reader build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run watch 39561472169 --exit-status --repo "$GITHUB_REPOSITORY" --interval 20
+      - name: Download verified reader APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir package
+          gh release download build-8 --repo "$GITHUB_REPOSITORY" --pattern ustavy-offline.apk --pattern SHA256SUMS.txt --dir package
+          cd package
+          sha256sum -c SHA256SUMS.txt
+      - name: Install official RAR archiver
+        run: |
+          mkdir rar-bin
+          curl --fail --location --retry 3 https://www.rarlab.com/rar/rarlinux-x64-723.tar.gz | tar xz --strip-components=1 -C rar-bin
+      - name: Create and test RAR archive
+        run: |
+          ./rar-bin/rar a -ma5 -m3 -md32m -ep ustavy-books.rar package/ustavy-offline.apk
+          ./rar-bin/rar t -idq ustavy-books.rar
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("ustavy-books.rar")
+          with p.open("rb") as f:
+              assert f.read(8)==b"Rar!\x1a\x07\x01\x00"
+          print("Verified RAR5 archive, bytes:",p.stat().st_size)
+          PY
+      - name: Publish RAR download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload build-8 ustavy-books.rar --repo "$GITHUB_REPOSITORY"
