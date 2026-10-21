@@ -25,6 +25,8 @@ jobs:
         with:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
+      - name: Bundle verified offline OCR languages
+        run: python3 scripts/prepare_ocr.py
       - name: Enable Android emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -80,6 +82,7 @@ jobs:
         run: |
           pip install pypdf==6.1.1
           python3 scripts/prepare_assets.py
+          python3 scripts/prepare_ocr.py
       - name: Test offline interface
         run: |
           npm install --prefix /tmp/ustavy-tests playwright@1.56.1
@@ -103,6 +106,13 @@ jobs:
           with zipfile.ZipFile("ustavy-offline.zip") as z:
               assert z.testzip() is None
           PY
+      - name: Create and verify RAR download
+        run: |
+          mkdir -p rar-bin
+          curl --fail --location --retry 3 https://www.rarlab.com/rar/rarlinux-x64-723.tar.gz | tar xz --strip-components=1 -C rar-bin
+          ./rar-bin/rar a -ma5 -m3 -md32m -ep ustavy-books.rar ustavy-offline.apk
+          ./rar-bin/rar t -idq ustavy-books.rar
+          python3 -c 'assert open("ustavy-books.rar","rb").read(8) == b"Rar!\x1a\x07\x01\x00"'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -118,5 +128,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "build-${{ github.run_number }}" ustavy-offline.apk ustavy-offline.zip SHA256SUMS.txt ASSET_REPORT.json --title "Уставы и книги 0.2 — сборка ${{ github.run_number }}" --notes "PDF с иллюстрациями, TXT, JPG/PNG/WebP. Масштаб страниц, закладки и сохранение места. Текст PDF доступен поиску и ИИ; OCR и анализ картинок не включены. Новое приложение Уставы • книги устанавливается рядом с первой версией. Проверены чтение PDF, иллюстрации и восстановление страницы в Android-эмуляторе. Без INTERNET. Проверка на Samsung S25 Ultra требуется." --prerelease --target "${{ github.sha }}"
+          gh release create "build-${{ github.run_number }}" ustavy-offline.apk ustavy-offline.zip ustavy-books.rar SHA256SUMS.txt ASSET_REPORT.json --title "Уставы и книги 0.3 — OCR — сборка ${{ github.run_number }}" --notes "PDF с иллюстрациями, TXT, JPG/PNG/WebP. Масштаб страниц, закладки и сохранение места. Офлайн OCR русского и английского печатного текста из PDF и фотографий. Кнопка Распознать текст на текущей странице; проверка и исправление результата, сохранение для поиска и ИИ. Проверены реальное распознавание русского текста, скан PDF и пустая страница. Новое приложение Уставы • книги устанавливается рядом с первой версией. Проверены чтение PDF, иллюстрации и восстановление страницы в Android-эмуляторе. Без INTERNET. Проверка на Samsung S25 Ultra требуется." --prerelease --target "${{ github.sha }}"
 

@@ -52,8 +52,8 @@ public final class BookStore {
       pages.put(text);used+=text.length();visible+=text.trim().length();
      }
      if(total>pages.length()&&warning.isEmpty())warning="Для поиска обработаны первые "+pages.length()+" страниц. Просмотр доступен для всей книги.";
-     if(visible==0)warning="PDF содержит сканы или не имеет извлекаемого текста. Страницы и картинки доступны; OCR пока не поддерживается.";
-    }catch(Exception e){warning="Страницы доступны для просмотра, но текст извлечь не удалось. Поиск и ИИ по этой книге недоступны.";}
+     if(visible==0)warning="PDF содержит сканы или не имеет извлекаемого текста. Страницы и картинки доступны; Нажми «Распознать текст» на нужной странице.";
+    }catch(Exception e){warning="Страницы доступны для просмотра, но текст извлечь не удалось. Для скана нажми «Распознать текст».";}
    }else if(kind.equals("image")){
     BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.toString(),bounds);
     if(bounds.outWidth<=0||bounds.outHeight<=0)throw new IOException("Не удалось прочитать изображение.");
@@ -73,14 +73,29 @@ public final class BookStore {
   atomic(path(id,".book"),text);JSONArray pages=new JSONArray();pages.put(text);atomic(path(id,".index.json"),pages.toString());atomic(path(id,".json"),meta.toString());return meta;
  }
  public String pageText(String id,int page)throws Exception{
+  JSONObject ocr=ocrPages(id);if(ocr.has(String.valueOf(page)))return ocr.getString(String.valueOf(page));
   JSONArray pages=new JSONArray(read(path(id,".index.json"),12*1024*1024));return page>=0&&page<pages.length()?pages.getString(page):"";
  }
+ private JSONObject ocrPages(String id)throws Exception{File file=path(id,".ocr.json");return file.exists()?new JSONObject(read(file,12*1024*1024)):new JSONObject();}
+ public boolean isOcr(String id,int page)throws Exception{return ocrPages(id).has(String.valueOf(page));}
+ public synchronized void saveOcr(String id,int page,String text)throws Exception{
+  JSONObject meta=get(id);if(page<0||page>=meta.optInt("pages",1))throw new IOException("Нет такой страницы.");
+  text=text.trim();if(text.isEmpty())throw new IOException("Нет текста для сохранения.");
+  if(text.length()>100000)throw new IOException("Текст страницы превышает 100 000 символов.");
+  JSONObject ocr=ocrPages(id);ocr.put(String.valueOf(page),text);String encoded=ocr.toString();
+  if(encoded.length()>2000000)throw new IOException("Достигнут лимит распознанного текста книги.");
+  atomic(path(id,".ocr.json"),encoded);
+ }
  public JSONObject searchable(String id)throws Exception{
-  JSONObject meta=get(id);if(meta.getString("kind").equals("image")||meta.optString("origin").equals("reader-copy"))return null;
-  JSONArray pages=new JSONArray(read(path(id,".index.json"),12*1024*1024));StringBuilder text=new StringBuilder();
-  for(int i=0;i<pages.length();i++){String page=pages.getString(i);if(page.trim().isEmpty())continue;if(meta.getString("kind").equals("pdf"))text.append("\nСтраница ").append(i+1).append("\n");text.append(page).append("\n");}
+  JSONObject meta=get(id);if(meta.optString("origin").equals("reader-copy"))return null;
+  JSONArray pages=new JSONArray(read(path(id,".index.json"),12*1024*1024));TreeMap<Integer,String> merged=new TreeMap<>();
+  for(int i=0;i<pages.length();i++)merged.put(i,pages.getString(i));
+  JSONObject ocr=ocrPages(id);Iterator<String> keys=ocr.keys();while(keys.hasNext()){String key=keys.next();merged.put(Integer.parseInt(key),ocr.getString(key));}
+  StringBuilder text=new StringBuilder();for(Map.Entry<Integer,String> entry:merged.entrySet()){
+   String value=entry.getValue();if(value.trim().isEmpty())continue;if(meta.getString("kind").equals("pdf"))text.append("\nСтраница ").append(entry.getKey()+1).append("\n");text.append(value).append("\n");
+  }
   if(text.toString().trim().isEmpty())return null;
-  JSONObject result=new JSONObject();result.put("id","book-"+id);result.put("bookId",id);result.put("name",meta.getString("name"));result.put("text",text.toString());result.put("source","Файл с телефона");result.put("note","Импортированная книга. "+meta.optString("warning"));return result;
+  JSONObject result=new JSONObject();result.put("id","book-"+id);result.put("bookId",id);result.put("name",meta.getString("name"));result.put("text",text.toString());result.put("source","Файл с телефона");result.put("note","Импортированная книга. "+(ocr.length()>0?"Есть текст OCR: возможны ошибки. ":"")+meta.optString("warning"));return result;
  }
  private void atomic(File to,String text)throws Exception{
   File tmp=new File(to+".tmp");try(FileOutputStream out=new FileOutputStream(tmp)){out.write(text.getBytes(StandardCharsets.UTF_8));out.getFD().sync();}

@@ -70,6 +70,49 @@ public class ReaderDeviceTest {
  @Test public void corruptedPdfIsRejected()throws Exception{
   try{store.importBook(new ByteArrayInputStream("broken PDF".getBytes(StandardCharsets.UTF_8)),"Broken.pdf","application/pdf");fail("Invalid PDF must fail");}catch(Exception expected){}
  }
+ private Bitmap printedText(){
+  Bitmap bitmap=Bitmap.createBitmap(1600,700,Bitmap.Config.ARGB_8888);Canvas canvas=new Canvas(bitmap);canvas.drawColor(Color.WHITE);
+  Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);paint.setColor(Color.BLACK);paint.setTextSize(64);paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
+  canvas.drawText("УСТАВ ВНУТРЕННЕЙ СЛУЖБЫ",60,150,paint);
+  canvas.drawText("Статья 42. Воинская дисциплина.",60,260,paint);
+  canvas.drawText("Military service 12345",60,370,paint);return bitmap;
+ }
+ @Test public void offlineOcrReadsRussianPhotoAndPersistsSearchText()throws Exception{
+  Bitmap bitmap=printedText();ByteArrayOutputStream bytes=new ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.PNG,100,bytes);bitmap.recycle();
+  JSONObject book=store.importBook(new ByteArrayInputStream(bytes.toByteArray()),"Текст.png","image/png");String id=book.getString("id");
+  String recognized=OcrEngine.recognize(context,store,id,0);
+  assertTrue(recognized,recognized.toLowerCase(java.util.Locale.ROOT).contains("дисциплина"));
+  assertTrue(recognized,recognized.contains("42"));assertTrue(recognized,recognized.contains("12345"));
+  store.saveOcr(id,0,recognized);BookStore reopened=new BookStore(context);
+  assertEquals(recognized,reopened.pageText(id,0));assertTrue(reopened.searchable(id).getString("text").contains("12345"));
+  reopened.saveOcr(id,0,"Исправленный текст статьи 42");assertEquals("Исправленный текст статьи 42",new BookStore(context).pageText(id,0));
+ }
+ @Test public void scannedPdfOcrReviewSavesCorrectPageAndSendsActualTextToAi()throws Exception{
+  Bitmap bitmap=printedText();PdfDocument pdf=new PdfDocument();
+  for(int n=0;n<2;n++){PdfDocument.Page page=pdf.startPage(new PdfDocument.PageInfo.Builder(800,350,n+1).create());page.getCanvas().drawColor(Color.WHITE);if(n==1)page.getCanvas().drawBitmap(bitmap,null,new Rect(0,0,800,350),null);pdf.finishPage(page);}
+  ByteArrayOutputStream bytes=new ByteArrayOutputStream();pdf.writeTo(bytes);pdf.close();bitmap.recycle();
+  JSONObject book=store.importBook(new ByteArrayInputStream(bytes.toByteArray()),"Скан.pdf","application/pdf");String id=book.getString("id");assertNull(store.searchable(id));
+  assertEquals("",OcrEngine.recognize(context,store,id,0));
+  context.getSharedPreferences("reader",0).edit().putInt(id+":page",1).commit();
+  try(ActivityScenario<BookActivity> activity=ActivityScenario.launchActivityForResult(new Intent(context,BookActivity.class).putExtra("bookId",id))){
+   activity.onActivity(a->findButton(a.getWindow().getDecorView(),"Распознать текст").performClick());
+   // Espresso waits for the main thread; recognition happens on a worker, so await its review dialog.
+   boolean ready=false;for(int i=0;i<300&&!ready;i++){
+    try{androidx.test.espresso.Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withText("Текст OCR — проверь ошибки")).check(androidx.test.espresso.assertion.ViewAssertions.matches(androidx.test.espresso.matcher.ViewMatchers.isDisplayed()));ready=true;}
+    catch(androidx.test.espresso.NoMatchingViewException e){Thread.sleep(100);}
+   }
+   assertTrue("OCR review must appear",ready);
+   androidx.test.espresso.Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withText("Сохранить")).perform(androidx.test.espresso.action.ViewActions.click());
+   boolean saved=false;for(int i=0;i<100&&!saved;i++){saved=store.isOcr(id,1);if(!saved)Thread.sleep(100);}assertTrue(saved);
+   InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   assertTrue(new BookStore(context).pageText(id,0).trim().isEmpty());assertTrue(store.pageText(id,1).contains("42"));
+   assertTrue(store.searchable(id).getString("text").contains("Страница 2"));
+   // Wait for the saved result to be displayed before asking AI.
+   AtomicBoolean shown=new AtomicBoolean(false);for(int i=0;i<100&&!shown.get();i++){activity.onActivity(a->shown.set(hasText(a.getWindow().getDecorView(),"Текст OCR сохранён")));if(!shown.get())Thread.sleep(100);}
+   assertTrue(shown.get());activity.onActivity(a->findButton(a.getWindow().getDecorView(),"ИИ").performClick());
+   assertEquals(android.app.Activity.RESULT_OK,activity.getResult().getResultCode());assertTrue(activity.getResult().getResultData().getStringExtra("text").contains("42"));
+  }
+ }
  private Button findButton(View view,String label){
   if(view instanceof Button&&((Button)view).getText().toString().equals(label))return (Button)view;
   if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){Button b=findButton(group.getChildAt(i),label);if(b!=null)return b;}}return null;
