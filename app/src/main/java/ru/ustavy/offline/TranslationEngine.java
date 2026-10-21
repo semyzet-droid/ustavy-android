@@ -20,7 +20,7 @@ public final class TranslationEngine {
   JSONObject pair=templates.getJSONObject(from+"-"+to);StringBuilder prompt=new StringBuilder("<|im_start|>system\n");prompt.append(pair.getString("system")).append("<|im_end|>\n");
   JSONArray examples=pair.getJSONArray("examples");for(int i=0;i<examples.length();i++){JSONArray sample=examples.getJSONArray(i);prompt.append("<|im_start|>user\n").append(sample.getString(0)).append("<|im_end|>\n<|im_start|>assistant\n").append(sample.getString(1)).append("<|im_end|>\n");}
   // Prevent document text from opening chat-template control tokens.
-  prompt.append("<|im_start|>user\n").append(text.replace("<|","＜｜").replace("|>","｜＞")).append("<|im_end|>\n<|im_start|>assistant\n");return prompt.toString();
+  prompt.append("<|im_start|>user\n").append(text.replace("<|","＜｜").replace("|>","｜＞")).append("<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n");return prompt.toString();
  }
  public static String translate(String input,String from,String to,JSONObject templates,Generator generator,BooleanSupplier cancelled,Progress progress)throws Exception{
   if(input==null||input.trim().isEmpty()||input.length()>100000)throw new IOException("Введи текст до 100 000 символов.");if(!supported(from,to))throw new IOException("Неподдерживаемая пара языков.");

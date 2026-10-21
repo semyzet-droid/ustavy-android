@@ -1,11 +1,13 @@
 plugins { id 'com.android.application' }
 def readerTest = project.hasProperty('readerTest')
+def standaloneTranslator = project.hasProperty('standaloneTranslator')
 android {
  namespace 'ru.ustavy.offline'
  compileSdk 35
  ndkVersion '28.0.13004108'
  defaultConfig {
-  applicationId 'ru.ustavy.offline.books'
+  applicationId standaloneTranslator ? 'ru.ustavy.offline.translator' : 'ru.ustavy.offline.books'
+  manifestPlaceholders = [appLabel: standaloneTranslator ? 'Уставы • переводчик' : 'Уставы • книги']
   minSdk 28
   targetSdk 35
   versionCode 7
@@ -17,6 +19,7 @@ android {
   }
  }
  if (!readerTest) { externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt'; version '3.22.1' } } }
+ signingConfigs { debug { if (!readerTest) { storeFile rootProject.file('.ci-signing/debug.keystore'); storePassword 'android'; keyAlias 'androiddebugkey'; keyPassword 'android' } } }
  androidResources { noCompress += ['gguf'] }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }

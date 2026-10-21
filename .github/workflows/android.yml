@@ -68,8 +68,14 @@ jobs:
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.0.13004108" "cmake;3.22.1"
       - uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: ustavy-books-test-signing-v1
+          path: .ci-signing/debug.keystore
+          key: ustavy-test-signing-v2
+      - name: Prepare repeatable test signing key
+        run: |
+          mkdir -p .ci-signing
+          if [ ! -s .ci-signing/debug.keystore ]; then
+            keytool -genkeypair -keystore .ci-signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ustavy Test Build"
+          fi
       - name: Fetch pinned inference engine
         run: |
           mkdir -p vendor/llama.cpp
@@ -77,7 +83,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: app/src/main/assets/model.gguf
-          key: qwen-1.5b-91cad51-q4km
+          key: qwen3-1.7b-daeb8e2-q4km
       - name: Prepare offline assets
         run: |
           pip install pypdf==6.1.1
@@ -96,7 +102,26 @@ jobs:
       - name: Build APK
         run: gradle :app:assembleDebug --stacktrace --max-workers=2
       - name: Verify signature and offline manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          mkdir -p /tmp/ustavy-previous
+          gh release download build-15 --pattern ustavy-offline.apk --dir /tmp/ustavy-previous
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs /tmp/ustavy-previous/ustavy-offline.apk > /tmp/old-certificate.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk > /tmp/new-certificate.txt
+          python3 - <<'PYCOMPARE'
+          import pathlib,re
+          old=pathlib.Path('/tmp/old-certificate.txt').read_text()
+          new=pathlib.Path('/tmp/new-certificate.txt').read_text()
+          pattern=r'Signer #1 certificate SHA-256 digest: (\S+)'
+          same=re.search(pattern,old).group(1)==re.search(pattern,new).group(1)
+          pathlib.Path('/tmp/standalone-translator').write_text('no' if same else 'yes')
+          pathlib.Path('INSTALLATION.txt').write_text('Обновление Уставы • книги.' if same else 'Установи Уставы • переводчик рядом с Уставы • книги. Подпись прежней тестовой версии недоступна. Старая версия и её книги/заметки сохранятся; в новой версии импортируй нужные книги заново.',encoding='utf-8')
+          print('Previous signer matches:',same)
+          PYCOMPARE
+          if [ "$(cat /tmp/standalone-translator)" = "yes" ]; then
+            gradle :app:assembleDebug -PstandaloneTranslator --stacktrace --max-workers=2
+          fi
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions app/build/outputs/apk/debug/app-debug.apk > permissions.txt
           if grep -q android.permission.INTERNET permissions.txt; then exit 1; fi
@@ -128,11 +153,12 @@ jobs:
             ASSET_REPORT.json
             SOURCE_DIAGNOSTIC.txt
             TRANSLATION_TESTS.json
+            INSTALLATION.txt
           compression-level: 0
           retention-days: 7
       - name: Publish installable test build
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "build-${{ github.run_number }}" ustavy-offline.apk ustavy-offline.zip ustavy-books.rar SHA256SUMS.txt ASSET_REPORT.json TRANSLATION_TESTS.json --title "Уставы и книги 0.7 — переводчик — сборка ${{ github.run_number }}" --notes "Офлайн ИИ-переводчик: русский ↔ английский и русский ↔ украинский. Текст, импорт TXT/PDF/EPUB/FB2, перевод из читалки, остановка, сохранение черновика и экспорт редактируемого результата в TXT UTF-8. До 100 000 символов за задачу; вёрстка и картинки не переносятся. Проверены четыре направления на встроенной модели. Сохранение иллюстраций EPUB/FB2, встроенных картинок PDF и страницы PDF целиком в PNG через системный выбор папки. EPUB, FB2 и FB2.ZIP с иллюстрациями; PDF и TXT. Выделение текста в читалке и статьях, цитаты с комментариями, подсветка и переход к источнику, изменение и удаление заметок. Тема и фон: тёмная, светлая, тёплая, чёрная, свой цвет и своя картинка с телефона; общее оформление приложения и читалки. PDF с иллюстрациями, TXT, JPG/PNG/WebP. Масштаб страниц, закладки и сохранение места. Офлайн OCR русского и английского печатного текста из PDF и фотографий. Кнопка Распознать текст на текущей странице; проверка и исправление результата, сохранение для поиска и ИИ. Проверены реальное распознавание русского текста, скан PDF и пустая страница. Новое приложение Уставы • книги устанавливается рядом с первой версией. Проверены чтение PDF, иллюстрации и восстановление страницы в Android-эмуляторе. Без INTERNET. Проверка на Samsung S25 Ultra требуется." --prerelease --target "${{ github.sha }}"
+          gh release create "build-${{ github.run_number }}" ustavy-offline.apk ustavy-offline.zip ustavy-books.rar SHA256SUMS.txt ASSET_REPORT.json TRANSLATION_TESTS.json INSTALLATION.txt --title "Уставы и книги 0.7 — переводчик — сборка ${{ github.run_number }}" --notes "Офлайн ИИ-переводчик: русский ↔ английский и русский ↔ украинский. Текст, импорт TXT/PDF/EPUB/FB2, перевод из читалки, остановка, сохранение черновика и экспорт редактируемого результата в TXT UTF-8. До 100 000 символов за задачу; вёрстка и картинки не переносятся. Проверены четыре направления на встроенной модели. Сохранение иллюстраций EPUB/FB2, встроенных картинок PDF и страницы PDF целиком в PNG через системный выбор папки. EPUB, FB2 и FB2.ZIP с иллюстрациями; PDF и TXT. Выделение текста в читалке и статьях, цитаты с комментариями, подсветка и переход к источнику, изменение и удаление заметок. Тема и фон: тёмная, светлая, тёплая, чёрная, свой цвет и своя картинка с телефона; общее оформление приложения и читалки. PDF с иллюстрациями, TXT, JPG/PNG/WebP. Масштаб страниц, закладки и сохранение места. Офлайн OCR русского и английского печатного текста из PDF и фотографий. Кнопка Распознать текст на текущей странице; проверка и исправление результата, сохранение для поиска и ИИ. Проверены реальное распознавание русского текста, скан PDF и пустая страница. Тип установки указан в INSTALLATION.txt; если подпись предыдущего тестового APK не совпадает, сборка Уставы • переводчик устанавливается отдельно, старая версия и её данные сохраняются. Проверены чтение PDF, иллюстрации и восстановление страницы в Android-эмуляторе. Без INTERNET. Проверка на Samsung S25 Ultra требуется." --prerelease --target "${{ github.sha }}"
 

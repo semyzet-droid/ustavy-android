@@ -4,8 +4,8 @@ from datetime import datetime,timezone
 from html.parser import HTMLParser
 root=pathlib.Path("app/src/main/assets");root.mkdir(parents=True,exist_ok=True)
 lic=root/"licenses";lic.mkdir(exist_ok=True)
-revision="91cad51170dc346986eccefdc2dd33a9da36ead9"
-base=f"https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/{revision}/"
+revision="daeb8e2d528a760970442092f6bf1e55c3b659eb"
+base=f"https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/{revision}/"
 def download(url,path):
     for attempt in range(3):
         try:
@@ -16,15 +16,15 @@ def download(url,path):
         except Exception:
             if attempt==2:raise
             time.sleep(3)
-if not (root/"model.gguf").exists():download(base+"qwen2.5-1.5b-instruct-q4_k_m.gguf",root/"model.gguf")
+if not (root/"model.gguf").exists():download(base+"Qwen3-1.7B-Q4_K_M.gguf",root/"model.gguf")
 with open(root/"model.gguf","rb") as stream:
     assert stream.read(4)==b"GGUF","Invalid GGUF model"
 with open(root/"model.gguf","rb") as stream:digest=hashlib.file_digest(stream,"sha256").hexdigest()
-assert digest=="6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e", "Model integrity mismatch"
+assert digest=="d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5", "Model integrity mismatch"
 print("Model:",(root/"model.gguf").stat().st_size,"bytes; sha256",digest,flush=True)
-download(base+"LICENSE",lic/"QWEN-LICENSE.txt")
+download("https://huggingface.co/Qwen/Qwen3-1.7B/resolve/main/LICENSE",lic/"QWEN-LICENSE.txt")
 (lic/"LLAMA-LICENSE.txt").write_bytes(pathlib.Path("vendor/llama.cpp/LICENSE").read_bytes())
-(lic/"NOTICE.txt").write_text("Qwen2.5-1.5B-Instruct-GGUF — Qwen / Alibaba Cloud. Apache-2.0.\n"+base+"\nSHA256 "+digest+"\n\nllama.cpp — MIT, ggml contributors.\nhttps://github.com/ggml-org/llama.cpp\n\n"+(lic/"QWEN-LICENSE.txt").read_text()+"\n\n"+(lic/"LLAMA-LICENSE.txt").read_text(),encoding="utf-8")
+(lic/"NOTICE.txt").write_text("Qwen3-1.7B-GGUF — Qwen / Alibaba Cloud. Apache-2.0.\n"+base+"\nSHA256 "+digest+"\n\nllama.cpp — MIT, ggml contributors.\nhttps://github.com/ggml-org/llama.cpp\n\n"+(lic/"QWEN-LICENSE.txt").read_text()+"\n\n"+(lic/"LLAMA-LICENSE.txt").read_text(),encoding="utf-8")
 class Extract(HTMLParser):
     def __init__(self):super().__init__();self.text=[];self.skip=0
     def handle_starttag(self,tag,attrs):
@@ -97,3 +97,4 @@ status="" if documents else "Не удалось загрузить официа
 pathlib.Path("ASSET_REPORT.json").write_text(json.dumps({"model_sha256":digest,"documents":[{"name":d["name"],"characters":len(d["text"])} for d in documents],"source_errors":errors},ensure_ascii=False,indent=2),encoding="utf-8")
 print("Bundled documents:",len(documents),flush=True)
 print(pathlib.Path("ASSET_REPORT.json").read_text(),flush=True)
+

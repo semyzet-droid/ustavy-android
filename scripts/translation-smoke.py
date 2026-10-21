@@ -5,14 +5,16 @@ templates=json.loads((root/'translation-prompts.json').read_text())
 cases=[('ru-en','Я хочу сохранить этот файл.',[r'(save|keep)',r'file']),
        ('en-ru','Please open the window.',[r'откро',r'окн']),
        ('ru-uk','Спасибо за помощь.',[r'(дякую|спасибі|вдячн)',r'(допомог|підтрим)']),
-       ('uk-ru','Будь ласка, зачекайте.',[r'пожалуйста',r'(подожд|ожида|погод)'])]
+       ('uk-ru','Будь ласка, зачекайте.',[r'пожалуйста',r'(подожд|ожида|погод)']),
+       ('ru-uk','Сегодня хорошая погода.',[r'сьогодні',r'погода']),
+       ('uk-ru','Я хочу зберегти цей файл.',[r'(сохран|сберечь)',r'файл'])]
 report=[]
 for source,text,patterns in cases:
     pair=templates[source]
     prompt='<|im_start|>system\n'+pair['system']+'<|im_end|>\n'
     for a,b in pair['examples']:
         prompt+='<|im_start|>user\n'+a+'<|im_end|>\n<|im_start|>assistant\n'+b+'<|im_end|>\n'
-    prompt+='<|im_start|>user\n'+text+'<|im_end|>\n<|im_start|>assistant\n'
+    prompt+='<|im_start|>user\n'+text+'<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n'
     with tempfile.NamedTemporaryFile(mode='w',encoding='utf-8') as f:
         f.write(prompt);f.flush()
         result=subprocess.run(['build-smoke/translation-smoke',str(root/'model.gguf'),f.name],capture_output=True,text=True,timeout=180)
