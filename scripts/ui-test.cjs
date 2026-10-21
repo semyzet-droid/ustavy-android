@@ -46,7 +46,17 @@ const {resolve}=require("node:path");
  await page.locator("#resetAppearance").click();assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()),"#101914");
  await page.locator("#closeAppearance").click();await page.locator("[data-tab=saved]").click();assert.equal(await page.locator("#bookmarks .result").count(),1);
  assert.deepEqual(errors,[]);
- console.log("PASS: offline search, exact article number, Russian normalization, bookmarks persistence, quiz, paragraph splitting, book catalog, PDF text search reader bridge, theme persistence, custom color, wallpaper and reset.");
+ await page.locator('[data-tab="search"]').click();await page.locator("#query").fill("учет");await page.waitForTimeout(250);await page.locator("#results .result").click();
+ await page.evaluate(()=>{const r=document.createRange();r.selectNodeContents(document.getElementById("detailBody"));const s=window.getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event("selectionchange"));});
+ await page.locator("#saveSelection").click();await page.locator("#noteComment").fill("Запомнить обязанности");await page.locator("#saveNote").click();
+ await page.locator('[data-tab="notes"]').click();assert.match(await page.locator("#notesList").innerText(),/Запомнить обязанности/);
+ await page.reload();await page.locator('[data-tab="notes"]').click();assert.match(await page.locator("#notesList").innerText(),/Учёт личного состава/);
+ await page.locator("#notesList button").filter({hasText:"К источнику"}).click();assert.equal(await page.locator(".annotation").count(),1);
+ await page.locator(".annotation").click();await page.locator("#noteComment").fill("Исправленная заметка");await page.locator("#saveNote").click();
+ await page.locator('[data-tab="notes"]').click();assert.match(await page.locator("#notesList").innerText(),/Исправленная заметка/);
+ page.once("dialog",dialog=>dialog.accept());await page.locator("#notesList button").filter({hasText:"Удалить"}).click();assert.match(await page.locator("#notesList").innerText(),/Заметок пока нет/);
+ assert.deepEqual(errors,[]);
+ console.log("PASS: offline search, exact article number, Russian normalization, bookmarks persistence, quiz, paragraph splitting, book catalog, PDF text search reader bridge, theme persistence, custom color, wallpaper, reset, selected quote notes, editing, source navigation and deletion.");
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
 

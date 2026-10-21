@@ -36,10 +36,13 @@ public final class BookStore {
   String id=UUID.randomUUID().toString();File file=path(id,".book");
   try{
    copy(source,file,MAX_FILE);String lower=name.toLowerCase(Locale.ROOT),kind;
-   if("application/pdf".equals(mime)||lower.endsWith(".pdf"))kind="pdf";
+   if(lower.endsWith(".epub")||"application/epub+zip".equals(mime))kind="epub";
+   else if(lower.endsWith(".fb2.zip")||lower.endsWith(".zip"))kind="fb2zip";
+   else if(lower.endsWith(".fb2")||"application/x-fictionbook+xml".equals(mime))kind="fb2";
+   else if("application/pdf".equals(mime)||lower.endsWith(".pdf"))kind="pdf";
    else if((mime!=null&&mime.startsWith("image/"))||lower.matches(".*\\.(png|jpe?g|webp|bmp)$"))kind="image";
    else if((mime!=null&&mime.startsWith("text/"))||lower.endsWith(".txt"))kind="txt";
-   else throw new IOException("Поддерживаются PDF, TXT, JPG, PNG и WebP.");
+   else throw new IOException("Поддерживаются PDF, EPUB, FB2, FB2.ZIP, TXT, JPG, PNG и WebP.");
    JSONObject meta=new JSONObject();meta.put("id",id);meta.put("name",name);meta.put("kind",kind);meta.put("bytes",file.length());
    JSONArray pages=new JSONArray();String warning="";int total=1;
    if(kind.equals("pdf")){
@@ -54,6 +57,8 @@ public final class BookStore {
      if(total>pages.length()&&warning.isEmpty())warning="Для поиска обработаны первые "+pages.length()+" страниц. Просмотр доступен для всей книги.";
      if(visible==0)warning="PDF содержит сканы или не имеет извлекаемого текста. Страницы и картинки доступны; Нажми «Распознать текст» на нужной странице.";
     }catch(Exception e){warning="Страницы доступны для просмотра, но текст извлечь не удалось. Для скана нажми «Распознать текст».";}
+   }else if(kind.equals("epub")||kind.equals("fb2")||kind.equals("fb2zip")){
+    BookFormats decoded=BookFormats.read(file,kind,path(id,"-media"));pages=decoded.pages;total=pages.length();atomic(path(id,".images.json"),decoded.images.toString());if(kind.equals("fb2zip")){kind="fb2";meta.put("kind",kind);}
    }else if(kind.equals("image")){
     BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.toString(),bounds);
     if(bounds.outWidth<=0||bounds.outHeight<=0)throw new IOException("Не удалось прочитать изображение.");
@@ -64,13 +69,24 @@ public final class BookStore {
    }
    meta.put("pages",total);meta.put("indexedPages",pages.length());meta.put("warning",warning);
    atomic(path(id,".index.json"),pages.toString());atomic(path(id,".json"),meta.toString());return meta;
-  }catch(Throwable e){file.delete();path(id,".index.json").delete();path(id,".json").delete();throw e;}
+  }catch(Throwable e){file.delete();path(id,".index.json").delete();path(id,".json").delete();path(id,".images.json").delete();File media=path(id,"-media");File[] images=media.listFiles();if(images!=null)for(File image:images)image.delete();media.delete();throw e;}
  }
  public JSONObject textBook(String externalId,String name,String text)throws Exception{
   if(text.length()>2000000)throw new IOException("Слишком длинная книга.");
   String id=UUID.nameUUIDFromBytes(("text:"+externalId).getBytes(StandardCharsets.UTF_8)).toString();
   JSONObject meta=new JSONObject();meta.put("id",id);meta.put("name",name);meta.put("kind","txt");meta.put("pages",1);meta.put("indexedPages",1);meta.put("warning","");meta.put("origin","reader-copy");
   atomic(path(id,".book"),text);JSONArray pages=new JSONArray();pages.put(text);atomic(path(id,".index.json"),pages.toString());atomic(path(id,".json"),meta.toString());return meta;
+ }
+ public android.text.SpannableString illustrated(String id,int page,String text,int width)throws Exception{
+  android.text.SpannableString result=new android.text.SpannableString(text);File manifest=path(id,".images.json");if(!manifest.exists())return result;
+  JSONArray all=new JSONArray(read(manifest,12*1024*1024));JSONArray images=all.optJSONArray(page);if(images==null)return result;
+  for(int i=0;i<images.length();i++){JSONObject image=images.getJSONObject(i);String name=image.getString("file");int at=image.getInt("pos");if(!name.matches("[a-f0-9-]{36}\\.img")||at<0||at>=text.length()||text.charAt(at)!='\uFFFC')continue;
+   try{android.graphics.Bitmap bitmap=OcrEngine.decodeImage(new File(path(id,"-media"),name));
+    int w=Math.min(Math.max(100,width),bitmap.getWidth()),h=Math.max(1,(int)((double)bitmap.getHeight()*w/bitmap.getWidth()));
+    android.graphics.drawable.BitmapDrawable drawable=new android.graphics.drawable.BitmapDrawable(context.getResources(),bitmap);drawable.setBounds(0,0,w,h);
+    result.setSpan(new android.text.style.ImageSpan(drawable),at,at+1,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+   }catch(IOException ignored){}
+  }return result;
  }
  public String pageText(String id,int page)throws Exception{
   JSONObject ocr=ocrPages(id);if(ocr.has(String.valueOf(page)))return ocr.getString(String.valueOf(page));

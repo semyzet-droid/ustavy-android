@@ -44,6 +44,10 @@ public class MainActivity extends Activity {
   JSONObject o=obj("id",id);try{o.put("status",status);o.put("text",text);}catch(Exception ignored){}emit("ai",o);
  }
  public class Bridge {
+  @JavascriptInterface public void loadNotes(){worker.execute(()->{try{JSONObject data=new JSONObject().put("notes",new NoteStore(MainActivity.this).list());emit("notes",data);}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});}
+  @JavascriptInterface public void saveNote(String json){if(json.length()>20000)return;worker.execute(()->{try{new NoteStore(MainActivity.this).save(new JSONObject(json));loadNotes();}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});}
+  @JavascriptInterface public void deleteNote(String id){worker.execute(()->{try{new NoteStore(MainActivity.this).delete(id);loadNotes();}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});}
+
   @JavascriptInterface public void loadAppearance(){worker.execute(()->{try{emit("appearance",Appearance.payload(MainActivity.this));}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});}
   @JavascriptInterface public void saveAppearance(String scheme,String color,int strength){
    try{Appearance.save(MainActivity.this,scheme,color,strength);runOnUiThread(()->{Appearance.systemBars(MainActivity.this);web.setBackgroundColor(Appearance.background(MainActivity.this));});}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}
@@ -60,9 +64,10 @@ public class MainActivity extends Activity {
   }
   @JavascriptInterface public void importBook(){runOnUiThread(()->{
    Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");
-   i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/pdf","text/plain","image/jpeg","image/png","image/webp","image/bmp"});startActivityForResult(i,11);
+   i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/pdf","application/epub+zip","application/x-fictionbook+xml","application/zip","application/octet-stream","text/xml","application/xml","text/plain","image/jpeg","image/png","image/webp","image/bmp"});startActivityForResult(i,11);
   });}
   @JavascriptInterface public void openBook(String id){runOnUiThread(()->startActivityForResult(new Intent(MainActivity.this,BookActivity.class).putExtra("bookId",id),20));}
+  @JavascriptInterface public void openNoteBook(String id,int page,String quote){worker.execute(()->{try{JSONObject book=books.get(id);if(page<0||page>=book.optInt("pages",1))return;getSharedPreferences("reader",0).edit().putInt(id+":page",page).apply();runOnUiThread(()->startActivityForResult(new Intent(MainActivity.this,BookActivity.class).putExtra("bookId",id).putExtra("focusQuote",quote.length()>10000?quote.substring(0,10000):quote),20));}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});}
   @JavascriptInterface public void readTextBook(String id,String name,String text){
    if(id.length()>200||name.length()>300||text.length()>2000000){emit("importerror",obj("message","Слишком длинная книга."));return;}
    worker.execute(()->{try{JSONObject meta=books.textBook(id,name,text);openBook(meta.getString("id"));}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});
@@ -115,7 +120,7 @@ public class MainActivity extends Activity {
    Uri uri=data.getData();worker.execute(()->{try{Appearance.importWallpaper(this,getContentResolver().openInputStream(uri));new Bridge().loadAppearance();}catch(Throwable e){emit("importerror",obj("message","Не удалось установить фон: "+e.getMessage()));}});return;
   }
   if(request==20){
-   new Bridge().loadAppearance();Appearance.systemBars(this);
+   new Bridge().loadAppearance();new Bridge().loadNotes();Appearance.systemBars(this);
    if(result==RESULT_OK&&data!=null){JSONObject passage=obj("text",data.getStringExtra("text"));try{passage.put("source",data.getStringExtra("source"));}catch(Exception ignored){}emit("bookpassage",passage);}
    new Bridge().loadBooks();return;
   }

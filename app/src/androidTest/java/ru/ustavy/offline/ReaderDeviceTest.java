@@ -133,6 +133,41 @@ public class ReaderDeviceTest {
    Bitmap stored=BitmapFactory.decodeFile(Appearance.wallpaper(context).toString());assertTrue(Color.blue(stored.getPixel(20,20))>240);stored.recycle();
   }finally{Appearance.wallpaper(context).delete();Appearance.prefs(context).edit().clear().commit();}
  }
+ private byte[] zip(java.util.Map<String,byte[]> files)throws Exception{
+  ByteArrayOutputStream bytes=new ByteArrayOutputStream();try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(bytes)){for(java.util.Map.Entry<String,byte[]> file:files.entrySet()){zip.putNextEntry(new java.util.zip.ZipEntry(file.getKey()));zip.write(file.getValue());zip.closeEntry();}}return bytes.toByteArray();
+ }
+ private byte[] utf8(String text){return text.getBytes(StandardCharsets.UTF_8);}
+ private byte[] blueImage(){Bitmap image=Bitmap.createBitmap(80,40,Bitmap.Config.ARGB_8888);image.eraseColor(Color.BLUE);ByteArrayOutputStream bytes=new ByteArrayOutputStream();image.compress(Bitmap.CompressFormat.PNG,100,bytes);image.recycle();return bytes.toByteArray();}
+ @Test public void epubUsesSpineOrderAndKeepsInlinePictures()throws Exception{
+  java.util.Map<String,byte[]> files=new java.util.LinkedHashMap<>();files.put("META-INF/container.xml",utf8("<container><rootfiles><rootfile full-path='OPS/book.opf'/></rootfiles></container>"));
+  files.put("OPS/book.opf",utf8("<package><manifest><item id='second' href='second.xhtml'/><item id='first' href='first.xhtml'/></manifest><spine><itemref idref='first'/><itemref idref='second'/></spine></package>"));
+  files.put("OPS/first.xhtml",utf8("<html><body><h1>Первая глава</h1><p>Воинская служба.</p><img src='image.png'/></body></html>"));files.put("OPS/second.xhtml",utf8("<html><body><p>Вторая глава</p></body></html>"));files.put("OPS/image.png",blueImage());
+  JSONObject book=store.importBook(new ByteArrayInputStream(zip(files)),"Книга.epub","application/epub+zip");String id=book.getString("id");assertEquals(2,book.getInt("pages"));assertTrue(store.pageText(id,0).contains("Первая"));assertTrue(store.pageText(id,1).contains("Вторая"));
+  android.text.SpannableString text=store.illustrated(id,0,store.pageText(id,0),300);android.text.style.ImageSpan[] images=text.getSpans(0,text.length(),android.text.style.ImageSpan.class);assertEquals(1,images.length);
+  android.graphics.drawable.BitmapDrawable drawable=(android.graphics.drawable.BitmapDrawable)images[0].getDrawable();assertEquals(Color.BLUE,drawable.getBitmap().getPixel(10,10));
+  context.getSharedPreferences("reader",0).edit().putInt(id+":page",1).commit();try(ActivityScenario<BookActivity> activity=ActivityScenario.launch(new Intent(context,BookActivity.class).putExtra("bookId",id))){awaitText(activity,"Вторая глава");}
+ }
+ @Test public void fb2ZipKeepsRussianTextPicturesAndRejectsTraversal()throws Exception{
+  String xml="<?xml version='1.0' encoding='UTF-8'?><FictionBook xmlns:l='http://www.w3.org/1999/xlink'><body><section><title><p>Глава первая</p></title><p>Русская книга для чтения.</p><image l:href='#photo'/></section></body><binary id='photo' content-type='image/png'>"+android.util.Base64.encodeToString(blueImage(),android.util.Base64.NO_WRAP)+"</binary></FictionBook>";
+  JSONObject book=store.importBook(new ByteArrayInputStream(zip(java.util.Collections.singletonMap("book.fb2",utf8(xml)))),"Книга.fb2.zip","application/zip");String id=book.getString("id");assertEquals("fb2",book.getString("kind"));assertTrue(store.pageText(id,0).contains("Русская книга"));
+  android.text.SpannableString text=store.illustrated(id,0,store.pageText(id,0),300);assertEquals(1,text.getSpans(0,text.length(),android.text.style.ImageSpan.class).length);
+  try{store.importBook(new ByteArrayInputStream(zip(java.util.Collections.singletonMap("../escape.fb2",utf8(xml)))),"Bad.fb2.zip","application/zip");fail("Traversal must fail");}catch(IOException expected){}
+ }
+ @Test public void nativeSelectedQuoteSavesCommentAndHighlightsSameSentence()throws Exception{
+  JSONObject book=store.importBook(new ByteArrayInputStream(utf8("Первая строка. Военнослужащий обязан знать устав.")),"Заметки.txt","text/plain");String id=book.getString("id");
+  try(ActivityScenario<BookActivity> activity=ActivityScenario.launch(new Intent(context,BookActivity.class).putExtra("bookId",id))){
+   awaitText(activity,"Военнослужащий");activity.onActivity(a->{try{
+    java.lang.reflect.Field field=BookActivity.class.getDeclaredField("prose");field.setAccessible(true);TextView text=(TextView)field.get(a);int start=text.getText().toString().indexOf("Военнослужащий");android.text.Selection.setSelection((android.text.Spannable)text.getText(),start,text.length());
+    android.widget.PopupMenu menu=new android.widget.PopupMenu(a,text);MenuItem item=menu.getMenu().add(0,707,0,"В заметки");text.getCustomSelectionActionModeCallback().onActionItemClicked(null,item);
+   }catch(ReflectiveOperationException e){throw new AssertionError(e);}});
+   activity.onActivity(a->{try{java.lang.reflect.Field field=BookActivity.class.getDeclaredField("activeDialog");field.setAccessible(true);android.app.AlertDialog dialog=(android.app.AlertDialog)field.get(a);EditText input=findEdit(dialog.getWindow().getDecorView());input.setText("Повторить завтра");dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick();}catch(ReflectiveOperationException e){throw new AssertionError(e);}});
+  }
+  NoteStore notebook=new NoteStore(context);JSONObject saved=null;JSONArray notes=notebook.list();for(int i=0;i<notes.length();i++)if(notes.getJSONObject(i).optString("bookId").equals(id))saved=notes.getJSONObject(i);
+  assertNotNull(saved);assertEquals("Повторить завтра",saved.getString("comment"));assertTrue(saved.getString("quote").startsWith("Военнослужащий"));
+  String noteId=saved.getString("id");saved.put("comment","Исправлено");notebook.save(saved);assertTrue(new NoteStore(context).list().toString().contains("Исправлено"));notebook.delete(noteId);assertFalse(new NoteStore(context).list().toString().contains(noteId));
+ }
+ private EditText findEdit(View view){if(view instanceof EditText)return (EditText)view;if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){EditText found=findEdit(group.getChildAt(i));if(found!=null)return found;}}return null;}
+ private void awaitText(ActivityScenario<BookActivity> activity,String text)throws Exception{AtomicBoolean ready=new AtomicBoolean(false);for(int i=0;i<100&&!ready.get();i++){activity.onActivity(a->ready.set(hasText(a.getWindow().getDecorView(),text)));if(!ready.get())Thread.sleep(100);}assertTrue("Book text must be readable",ready.get());}
  private Button findButton(View view,String label){
   if(view instanceof Button&&((Button)view).getText().toString().equals(label))return (Button)view;
   if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){Button b=findButton(group.getChildAt(i),label);if(b!=null)return b;}}return null;

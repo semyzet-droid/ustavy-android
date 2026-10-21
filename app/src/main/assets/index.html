@@ -13,18 +13,20 @@ mark{color:var(--accent-text);background:var(--accent);border-radius:3px}.empty{
 #status{min-height:22px;font-size:12px;color:var(--accent);margin:5px 0}.answer{white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
 dialog{background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:18px;width:calc(100% - 28px);max-width:700px;max-height:85vh;padding:20px}dialog::backdrop{background:#000b}dialog .answer{max-height:53vh;overflow:auto}
 :focus-visible{outline:3px solid var(--accent);outline-offset:3px}@media(max-width:560px){.controls{grid-template-columns:1fr}}
-#appearanceDialog label{display:block;margin:16px 0 7px}#appearanceDialog input[type=color]{height:50px;padding:5px}.theme-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.theme-options button[aria-pressed=true]{outline:3px solid var(--accent);outline-offset:1px}#appearancePreview{padding:16px;border-radius:12px;border:1px solid var(--line);margin:16px 0}
+#selectionBar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:5;padding:7px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 4px 20px #0008}.annotation{background:#b6c96b66;color:inherit;border-bottom:2px solid var(--accent);cursor:pointer}blockquote{white-space:pre-wrap;line-height:1.6;max-height:25vh;overflow:auto}#appearanceDialog label{display:block;margin:16px 0 7px}#appearanceDialog input[type=color]{height:50px;padding:5px}.theme-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.theme-options button[aria-pressed=true]{outline:3px solid var(--accent);outline-offset:1px}#appearancePreview{padding:16px;border-radius:12px;border:1px solid var(--line);margin:16px 0}
 </style></head><body><main>
 <header><div><div class="eyebrow">ЛИЧНЫЙ УЧЕБНИК</div><h1>Уставы ВС РФ</h1></div><button id="appearanceButton" aria-label="Тема и фон">Тема и фон</button></header><span class="badge">Без интернета</span>
 <div id="status" role="status" aria-live="polite">Подготавливаю библиотеку…</div>
-<nav aria-label="Разделы"><button class="active" data-tab="search">Поиск</button><button data-tab="library">Библиотека</button><button data-tab="books">Книги</button><button data-tab="saved">Закладки</button><button data-tab="learn">Учить</button><button data-tab="ai">ИИ</button></nav>
+<nav aria-label="Разделы"><button class="active" data-tab="search">Поиск</button><button data-tab="library">Библиотека</button><button data-tab="books">Книги</button><button data-tab="saved">Закладки</button><button data-tab="notes">Заметки</button><button data-tab="learn">Учить</button><button data-tab="ai">ИИ</button></nav>
 <section id="search"><h2>Найти слово или пункт</h2><div class="controls"><input id="query" type="search" placeholder="Обязанности или пункт 12" aria-label="Поисковый запрос"><select id="scope" aria-label="Выбор устава"><option value="">Все документы</option></select></div><p class="tiny">Номер ищется точно: 12, 12.1, ст. 12, пункт 12. При поиске текста учитываются все введённые слова, без различия регистра и ё/е.</p><div id="results"></div></section>
 <section id="library" class="hidden"><h2>Твоя библиотека</h2><button class="primary" id="import">Добавить TXT с телефона</button> <button id="libraryBook">Добавить PDF или картинку</button><p class="muted">Импорт: текст UTF-8, до 5 МБ. Поиск работает по встроенным и добавленным документам.</p><div class="notice">Встроенные тексты — снимок источника с указанной датой. Актуальность редакции на сегодня отдельно не подтверждена. Строевой устав можно добавить через импорт.</div><div id="documents"></div><p class="tiny">Документы, закладки и прогресс сохраняются на телефоне. Удаление приложения или очистка его данных удалит эти записи.</p></section>
-<section id="books" class="hidden"><h2>Мои книги</h2><button class="primary" id="importBook">Добавить PDF, TXT или картинку</button><p class="muted">PDF открывается целыми страницами с иллюстрациями. TXT — в режиме чтения с размером шрифта и темами. Место чтения сохраняется автоматически.</p><div id="bookList"></div></section>
+<section id="books" class="hidden"><h2>Мои книги</h2><button class="primary" id="importBook">Добавить PDF, EPUB, FB2, TXT или картинку</button><p class="muted">EPUB, FB2 и FB2.ZIP читаются с иллюстрациями; EPUB — в порядке глав. PDF открывается целыми страницами с иллюстрациями. TXT — в режиме чтения с размером шрифта и темами. Место чтения сохраняется автоматически.</p><div id="bookList"></div></section>
 <section id="saved" class="hidden"><h2>Закладки</h2><div id="bookmarks"></div></section>
-<section id="learn" class="hidden"><h2>Повторение по номерам</h2><div id="progress" class="muted"></div><div id="quiz"></div></section>
+<section id="notes" class="hidden"><h2>Мои заметки</h2><p class="muted">Выдели слово или предложение при чтении и нажми «В заметки». Сохраняются цитата, твой комментарий и ссылка на источник.</p><div id="notesList"></div></section><section id="learn" class="hidden"><h2>Повторение по номерам</h2><div id="progress" class="muted"></div><div id="quiz"></div></section>
 <section id="ai" class="hidden"><h2>Помощник по уставам</h2><div class="card"><span class="badge">ИИ на телефоне</span><p>Найди статью и открой её. Нажми «Объяснить с ИИ» или задай вопрос по её тексту.</p><p class="muted">Модель Qwen2.5 1.5B включена в приложение. При первом запуске ИИ потребуется ещё около 1,2 ГБ для распаковки. Ответ может содержать ошибки — сверяй с источником.</p><button id="findSource">Найти статью</button></div></section>
 <section id="detail" class="hidden"><div class="row"><button id="back">← Назад</button><button id="bookmark">В закладки</button></div><button id="readWhole">Читать как книгу</button><p id="detailDoc" class="muted"></p><h2 id="detailTitle"></h2><p id="detailNote" class="tiny"></p><article id="detailBody" class="reader"></article><div class="card"><h2>Разобрать с помощником</h2><textarea id="question" rows="2" maxlength="500" placeholder="Объясни простыми словами: что нужно запомнить?" aria-label="Вопрос по статье"></textarea><p><button class="primary" id="explain">Объяснить с ИИ</button></p><p class="tiny">ИИ получает только показанный пункт. Если в нём нет ответа, сведений может быть недостаточно.</p></div></section>
+<div id="selectionBar" class="hidden"><button class="primary" id="saveSelection">В заметки</button></div>
+<dialog id="noteDialog"><h2>Заметка к выделению</h2><blockquote id="noteQuote"></blockquote><p id="noteSource" class="tiny"></p><label for="noteComment">Мой комментарий</label><textarea id="noteComment" rows="4" maxlength="5000"></textarea><p class="row"><button id="cancelNote">Отмена</button><button class="primary" id="saveNote">Сохранить</button></p></dialog>
 <dialog id="appearanceDialog" aria-labelledby="appearanceTitle"><div class="row"><h2 id="appearanceTitle">Тема и фон</h2><button id="closeAppearance">Готово</button></div><p class="muted">Настройки сохраняются автоматически и применяются к приложению и читалке.</p>
 <div class="theme-options"><button data-scheme="dark">Тёмная</button><button data-scheme="light">Светлая</button><button data-scheme="sepia">Тёплая</button><button data-scheme="black">Чёрная</button></div>
 <label for="backgroundColor">Свой цвет фона</label><input id="backgroundColor" type="color" value="#233b50">
@@ -66,7 +68,8 @@ window.addEventListener("appearance",e=>{appearance={...appearance,...e.detail};
 applyAppearance();
 const norm=s=>String(s).toLocaleLowerCase("ru").replace(/ё/g,"е");
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let bookDocuments=[],bookList=[];
+let bookDocuments=[],bookList=[];let notes=[],selection=null,editingNote=null;
+try{notes=JSON.parse(localStorage.getItem("ustavy-notes-v1")||"[]");}catch(e){}
 let docs=[],userDocs=[],saved=[],read=[],correct=0,attempts=0,current=null,tab="search",timer,aiId="",aiBusy=false;
 try{const d=JSON.parse(localStorage.getItem(key)||"null");if(d){userDocs=Array.isArray(d.docs)?d.docs:[];saved=d.saved||[];read=d.read||[];correct=d.correct||0;attempts=d.attempts||0;}}catch(e){$("status").textContent="Не удалось восстановить сохранённые данные."}
 function persist(){try{localStorage.setItem(key,JSON.stringify({docs:userDocs,saved,read,correct,attempts}));return true}catch(e){$("status").textContent="Не удалось сохранить изменения: возможно, хранилище заполнено.";return false}}
@@ -84,8 +87,8 @@ function prepare(d){if(!d||typeof d.id!=="string"||typeof d.name!=="string"||typ
 docs=userDocs.map(prepare).filter(Boolean);
 function all(){return docs.flatMap(d=>d.parts.map((p,i)=>({...p,doc:d.name,docId:d.id,bookId:d.bookId||"",source:d.source||"Импорт с телефона",note:d.note||"Редакция не проверена",id:d.id+":"+i})))}
 function show(name){
- tab=name;$("detail").classList.add("hidden");
- ["search","library","books","saved","learn","ai"].forEach(n=>$(n).classList.toggle("hidden",n!==name));
+ selection=null;$("selectionBar").classList.add("hidden");tab=name;$("detail").classList.add("hidden");
+ ["search","library","books","saved","notes","learn","ai"].forEach(n=>$(n).classList.toggle("hidden",n!==name));
  document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
  render();window.scrollTo(0,0);
 }
@@ -116,10 +119,10 @@ function search(){
 }
 $("query").oninput=()=>{clearTimeout(timer);timer=setTimeout(search,150)};$("scope").onchange=search;
 function open(p){
- current=p;if(!read.includes(p.id)){read.push(p.id);persist()}
- ["search","library","books","saved","learn","ai"].forEach(n=>$(n).classList.add("hidden"));$("detail").classList.remove("hidden");
+ selection=null;$("selectionBar").classList.add("hidden");current=p;if(!read.includes(p.id)){read.push(p.id);persist()}
+ ["search","library","books","saved","notes","learn","ai"].forEach(n=>$(n).classList.add("hidden"));$("detail").classList.remove("hidden");
  $("detailDoc").textContent=p.doc;$("detailTitle").textContent=p.number?"Статья / пункт "+p.number:"Раздел";
- $("detailNote").textContent=p.note+"\nИсточник: "+p.source;$("detailBody").innerHTML=highlight(p.text);
+ $("detailNote").textContent=p.note+"\nИсточник: "+p.source;renderPassage();
  $("question").value="";bookmarkLabel();window.scrollTo(0,0);
 }
 function bookmarkLabel(){$("bookmark").textContent=saved.includes(current.id)?"Убрать закладку":"В закладки"}
@@ -166,7 +169,7 @@ function render(){
  for(const d of docs){
   const c=document.createElement("div");c.className="card";c.innerHTML="<b>"+esc(d.name)+"</b><p class='muted'>"+esc(d.note||"Редакция не проверена")+"</p><p class='tiny'>Разделов: "+d.parts.length+"</p>";
   const b=document.createElement("button");b.textContent="Поиск по тексту";b.onclick=()=>{show("search");$("scope").value=d.id;$("query").value="";search()};c.append(b);const readButton=document.createElement("button");readButton.textContent="Читать как книгу";readButton.onclick=()=>readBook(d);c.append(readButton);$("documents").append(c);
- }renderBooks();if(tab==="learn")quiz();
+ }renderBooks();renderNotes();if(tab==="learn")quiz();
 }
 $("explain").onclick=()=>{
  if(!current)return;
@@ -183,7 +186,39 @@ window.addEventListener("ai",e=>{
 });
 function closeAi(){if(aiBusy&&window.Phone)Phone.cancelAi();$("aiDialog").close()}
 $("closeAi").onclick=closeAi;$("aiDialog").addEventListener("cancel",()=>{if(aiBusy&&window.Phone)Phone.cancelAi()});
-window.goBack=()=>{if($("appearanceDialog").open){$("appearanceDialog").close();return}if($("aiDialog").open){closeAi();return}if(!$("detail").classList.contains("hidden"))show(tab);else show("search")};
+window.goBack=()=>{if($("noteDialog").open){$("noteDialog").close();return}if($("appearanceDialog").open){$("appearanceDialog").close();return}if($("aiDialog").open){closeAi();return}if(!$("detail").classList.contains("hidden"))show(tab);else show("search")};
+
+function renderPassage(){
+ if(!current)return;const text=current.text,ranges=[];
+ for(const n of notes.filter(n=>n.articleId===current.id)){let at=Number(n.start)||0;if(text.slice(at,at+n.quote.length)!==n.quote)at=text.indexOf(n.quote);if(at>=0)ranges.push({at,end:at+n.quote.length,n});}
+ ranges.sort((a,b)=>a.at-b.at);let html="",cursor=0;for(const r of ranges){if(r.at<cursor)continue;html+=highlight(text.slice(cursor,r.at))+"<mark class='annotation' data-note='"+esc(r.n.id)+"' title='"+esc(r.n.comment||"Заметка")+"'>"+highlight(text.slice(r.at,r.end))+"</mark>";cursor=r.end;}
+ $("detailBody").innerHTML=html+highlight(text.slice(cursor));
+}
+$("detailBody").onclick=e=>{const mark=e.target.closest("[data-note]");if(mark){const note=notes.find(n=>n.id===mark.dataset.note);if(note)editNote(note);}};
+document.addEventListener("selectionchange",()=>{
+ const s=window.getSelection(),body=$("detailBody");if(!current||$("detail").classList.contains("hidden")||!s||s.isCollapsed||!body.contains(s.anchorNode)||!body.contains(s.focusNode)){if(!$("noteDialog").open){selection=null;$("selectionBar").classList.add("hidden");}return;}
+ const range=s.getRangeAt(0),before=range.cloneRange();before.selectNodeContents(body);before.setEnd(range.startContainer,range.startOffset);
+ const quote=range.toString();if(quote.trim()&&quote.length<=10000){selection={quote,start:before.toString().length};$("selectionBar").classList.remove("hidden");}
+});
+$("saveSelection").onpointerdown=e=>e.preventDefault();$("saveSelection").onclick=()=>{if(selection&&current)editNote({...selection,source:current.doc+(current.number?", пункт "+current.number:""),articleId:current.id,comment:""});};
+function editNote(note){editingNote={...note};$("noteQuote").textContent=note.quote;$("noteSource").textContent=note.source;$("noteComment").value=note.comment||"";$("selectionBar").classList.add("hidden");$("noteDialog").showModal();}
+$("cancelNote").onclick=()=>$("noteDialog").close();
+$("saveNote").onclick=()=>{
+ if(!editingNote)return;const note={...editingNote,comment:$("noteComment").value,created:editingNote.created||Date.now()};
+ if(window.Phone&&Phone.saveNote)Phone.saveNote(JSON.stringify(note));else{
+  if(!note.id)note.id="xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{let r=Math.random()*16|0;return(c==="x"?r:(r&3|8)).toString(16)});
+  const previous=notes;notes=notes.filter(n=>n.id!==note.id).concat(note);try{localStorage.setItem("ustavy-notes-v1",JSON.stringify(notes));}catch(e){notes=previous;$("status").textContent="Не удалось сохранить заметку.";return;}renderNotes();renderPassage();
+ }
+ $("noteDialog").close();window.getSelection()?.removeAllRanges();selection=null;
+};
+function renderNotes(){const area=$("notesList");area.replaceChildren();if(!notes.length){const p=document.createElement("p");p.className="empty";p.textContent="Заметок пока нет. Выдели цитату при чтении.";area.append(p);return;}
+ for(const n of [...notes].reverse()){const card=document.createElement("div");card.className="card";const quote=document.createElement("blockquote");quote.textContent=n.quote;card.append(quote);const comment=document.createElement("p");comment.textContent=n.comment||"Без комментария";card.append(comment);const source=document.createElement("p");source.className="tiny";source.textContent=n.source;card.append(source);
+  const edit=document.createElement("button");edit.textContent="Изменить";edit.onclick=()=>editNote(n);card.append(edit);
+  const jump=document.createElement("button");jump.textContent="К источнику";jump.onclick=()=>{if(n.bookId&&window.Phone&&Phone.openNoteBook)Phone.openNoteBook(n.bookId,n.page||0,n.quote);else{const p=all().find(p=>p.id===n.articleId);if(p){open(p);const mark=$("detailBody").querySelector('[data-note="'+CSS.escape(n.id)+'"]');if(mark)mark.scrollIntoView({block:"center"});}else $("status").textContent="Источник пока не загружен или был изменён.";}};card.append(jump);
+  const remove=document.createElement("button");remove.textContent="Удалить";remove.onclick=()=>{if(!confirm("Удалить эту заметку?"))return;if(window.Phone&&Phone.deleteNote)Phone.deleteNote(n.id);else{notes=notes.filter(x=>x.id!==n.id);localStorage.setItem("ustavy-notes-v1",JSON.stringify(notes));renderNotes();renderPassage();}};card.append(remove);area.append(card);
+ }
+}
+window.addEventListener("notes",e=>{notes=e.detail.notes||[];renderNotes();renderPassage();});
 
 function readBook(d){
  if(!window.Phone){$("status").textContent="Читалка доступна в Android-приложении.";return}
@@ -197,7 +232,7 @@ function renderBooks(){
  if(!bookList.length){const empty=document.createElement("p");empty.className="empty";empty.textContent="Добавь книгу или открой любой устав кнопкой «Читать как книгу».";area.append(empty);return}
  for(const b of bookList){
   const c=document.createElement("div");c.className="card";
-  const info=b.kind==="pdf"?"PDF • "+b.pages+" стр. • продолжить со стр. "+(b.position+1):b.kind==="txt"?"TXT • прочитано "+Math.round((b.progress||0)*100)+"%":"Изображение";
+  const info=b.kind==="pdf"?"PDF • "+b.pages+" стр. • продолжить со стр. "+(b.position+1):b.kind==="txt"?"TXT • прочитано "+Math.round((b.progress||0)*100)+"%":b.kind==="epub"?"EPUB • глав: "+b.pages+" • глава "+(b.position+1):b.kind==="fb2"?"FB2 • режим книги":"Изображение";
   c.innerHTML="<b>"+esc(b.name)+"</b><p class='muted'>"+esc(info)+"</p><p class='tiny'>"+esc(b.warning||"")+"</p>";
   const open=document.createElement("button");open.textContent=b.kind==="image"?"Посмотреть":"Читать";open.onclick=()=>{if(window.Phone)Phone.openBook(b.id)};c.append(open);area.append(c);
  }
@@ -213,6 +248,6 @@ window.addEventListener("bookpassage",e=>{
 });
 
 window.UstavyTest={parse,matches,numberQuery};
-render();if(window.Phone){Phone.loadCorpus();Phone.loadBooks();if(Phone.loadAppearance)Phone.loadAppearance();}
+render();if(window.Phone){Phone.loadCorpus();Phone.loadBooks();if(Phone.loadAppearance)Phone.loadAppearance();if(Phone.loadNotes)Phone.loadNotes();}
 })();
 </script></body></html>
