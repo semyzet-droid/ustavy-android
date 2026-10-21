@@ -56,7 +56,18 @@ const {resolve}=require("node:path");
  await page.locator('[data-tab="notes"]').click();assert.match(await page.locator("#notesList").innerText(),/Исправленная заметка/);
  page.once("dialog",dialog=>dialog.accept());await page.locator("#notesList button").filter({hasText:"Удалить"}).click();assert.match(await page.locator("#notesList").innerText(),/Заметок пока нет/);
  assert.deepEqual(errors,[]);
- console.log("PASS: offline search, exact article number, Russian normalization, bookmarks persistence, quiz, paragraph splitting, book catalog, PDF text search reader bridge, theme persistence, custom color, wallpaper, reset, selected quote notes, editing, source navigation and deletion.");
+ // UI transport is mocked; actual language generation is tested against the bundled model in CI.
+ await page.evaluate(()=>{window.Phone.translate=json=>{window.translationRequest=JSON.parse(json);const d=window.translationRequest;window.dispatchEvent(new CustomEvent("translation",{detail:{...d,output:d.to==="uk"?"Дякую за допомогу.":"Thank you for your help.",status:"done",message:"Перевод завершён"}}));};window.Phone.saveTranslation=(text,name)=>{window.savedTranslation={text,name}};});
+ await page.locator('[data-tab="translate"]').click();await page.locator("#translateInput").fill("Спасибо за помощь.");await page.locator("#translateTo").selectOption("uk");await page.locator("#startTranslation").click();
+ assert.equal(await page.locator("#translateOutput").inputValue(),"Дякую за допомогу.");assert.equal(await page.evaluate(()=>window.translationRequest.to),"uk");
+ await page.locator("#translateOutput").fill("Дуже дякую за допомогу.");await page.locator("#saveTranslationFile").click();assert.equal(await page.evaluate(()=>window.savedTranslation.text),"Дуже дякую за допомогу.");
+ await page.reload();await page.locator('[data-tab="translate"]').click();assert.equal(await page.locator("#translateOutput").inputValue(),"Дуже дякую за допомогу.");
+ await page.locator("#swapLanguages").click();assert.equal(await page.locator("#translateFrom").inputValue(),"uk");assert.equal(await page.locator("#translateTo").inputValue(),"ru");assert.equal(await page.locator("#translateInput").inputValue(),"Дуже дякую за допомогу.");assert.equal(await page.locator("#translateOutput").inputValue(),"");
+ await page.locator("#translateFrom").selectOption("en");assert.deepEqual(await page.locator("#translateTo option").evaluateAll(options=>options.map(o=>o.value)),["ru"]);
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent("translation",{detail:{status:"cancelled",output:"Готовая часть",message:"Остановлено. Результат неполный."}})));
+ assert.equal(await page.locator("#saveTranslationFile").innerText(),"Сохранить неполный TXT");assert.match(await page.locator("#translationStatus").innerText(),/неполный/);
+ assert.deepEqual(errors,[]);
+ console.log("PASS: offline search, exact article number, Russian normalization, bookmarks persistence, quiz, paragraph splitting, book catalog, PDF text search reader bridge, theme persistence, custom color, wallpaper, reset, selected quote notes, editing, source navigation deletion, translator directions, draft persistence, edited TXT export and partial result labels.");
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
 

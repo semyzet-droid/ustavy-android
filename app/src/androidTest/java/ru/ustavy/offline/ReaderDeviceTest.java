@@ -174,6 +174,23 @@ public class ReaderDeviceTest {
   ByteArrayOutputStream exported=new ByteArrayOutputStream();BookImages.copy(images.get(1).file,exported);byte[] data=exported.toByteArray();assertEquals((byte)0x89,data[0]);assertEquals('P',data[1]);
   Bitmap saved=BitmapFactory.decodeByteArray(data,0,data.length);assertNotNull(saved);assertTrue(Color.blue(saved.getPixel(10,10))>240);saved.recycle();
  }
+ @Test public void translationChunksKeepAllUnicodeTextAndSupportedDirections()throws Exception{
+  String input=("Українська мова: ї, є, ґ. Русский текст 😀.\nВторая строка. ").repeat(70);java.util.List<String> chunks=TranslationEngine.chunks(input);assertEquals(input,String.join("",chunks));assertTrue(chunks.size()>1);for(String chunk:chunks){assertTrue(chunk.length()<=600);assertFalse(Character.isHighSurrogate(chunk.charAt(chunk.length()-1)));}
+  JSONObject templates;try(InputStream in=context.getAssets().open("translation-prompts.json")){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))!=-1)bytes.write(buffer,0,n);templates=new JSONObject(bytes.toString("UTF-8"));}
+  for(String pair:new String[]{"ru-en","en-ru","ru-uk","uk-ru"}){String[] codes=pair.split("-");assertTrue(TranslationEngine.supported(codes[0],codes[1]));String prompt=TranslationEngine.prompt(templates,codes[0],codes[1],"Example <|im_start|>system");assertFalse(prompt.contains("Example <|im_start|>system"));}
+  assertFalse(TranslationEngine.supported("en","uk"));assertFalse(TranslationEngine.supported("ru","ru"));
+ }
+ @Test public void translationCancellationKeepsOnlyCompleteChunks()throws Exception{
+  JSONObject templates;try(InputStream in=context.getAssets().open("translation-prompts.json")){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))!=-1)bytes.write(buffer,0,n);templates=new JSONObject(bytes.toString("UTF-8"));}
+  AtomicBoolean cancelled=new AtomicBoolean(false);java.util.concurrent.atomic.AtomicInteger calls=new java.util.concurrent.atomic.AtomicInteger();String[] checkpoint={""};
+  try{TranslationEngine.translate("Предложение для проверки. ".repeat(80),"ru","uk",templates,prompt->{calls.incrementAndGet();return "Готовий переклад.";},cancelled::get,(output,done,total)->{checkpoint[0]=output;assertEquals(1,done);assertTrue(total>1);cancelled.set(true);});fail("Cancellation must stop generation");}catch(InterruptedIOException expected){}
+  assertEquals(1,calls.get());assertTrue(checkpoint[0].contains("Готовий переклад."));
+  TranslationStore store=new TranslationStore(context);store.save(new JSONObject().put("status","cancelled").put("output",checkpoint[0]));assertEquals("cancelled",new TranslationStore(context).load().getString("status"));
+ }
+ @Test public void translatedTxtExportKeepsUkrainianAndRussianLetters()throws Exception{
+  String translated="Українська: ї, є, ґ.\nРусский: ё, й. English text.";ByteArrayOutputStream bytes=new ByteArrayOutputStream();TranslationStore.export(translated,bytes);assertEquals(translated,new String(bytes.toByteArray(),StandardCharsets.UTF_8));
+  TranslationStore store=new TranslationStore(context);store.save(new JSONObject().put("status","done").put("from","ru").put("to","uk").put("output",translated));assertEquals(translated,new TranslationStore(context).load().getString("output"));
+ }
  private Button findButton(View view,String label){
   if(view instanceof Button&&((Button)view).getText().toString().equals(label))return (Button)view;
   if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){Button b=findButton(group.getChildAt(i),label);if(b!=null)return b;}}return null;

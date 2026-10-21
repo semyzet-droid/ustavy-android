@@ -40,7 +40,7 @@ public final class BookActivity extends Activity {
   }
   if(kind.equals("pdf")||kind.equals("image"))bar.addView(button("Править текст",this::editCurrentText));
   if(!kind.equals("txt"))bar.addView(button("Картинки",this::exportPictures));
-  bar.addView(button("Заметки",this::pageNotes));bar.addView(button("ИИ",this::sendPassage));
+  bar.addView(button("Перевести",this::sendTranslation));bar.addView(button("Заметки",this::pageNotes));bar.addView(button("ИИ",this::sendPassage));
   if(kind.equals("image"))bar.addView(button("Текст / фото",()->{textMode=!textMode;if(textMode)showText(currentText.isEmpty()?"Нажми «Распознать текст» для чтения изображения.":currentText);else{scroll.setVisibility(View.GONE);picture.setVisibility(View.VISIBLE);}}));
   {bar.addView(button("А−",()->font(-2)));bar.addView(button("А+",()->font(2)));bar.addView(button("Тема",()->{String[] schemes={"dark","light","sepia","black"};int index=java.util.Arrays.asList(schemes).indexOf(Appearance.scheme(this));Appearance.save(this,schemes[(index+1)%4],Appearance.prefs(this).getString("color","#233b50"),Appearance.prefs(this).getInt("strength",25));colors();}));}
   if(kind.equals("pdf")||kind.equals("image")){bar.addView(button("−",()->picture.changeZoom(0.8f)));bar.addView(button("+",()->picture.changeZoom(1.25f)));}
@@ -159,6 +159,11 @@ public final class BookActivity extends Activity {
    io.execute(()->{try{store.saveOcr(id,wanted,value);runOnUiThread(()->{if(!isDestroyed()&&!isFinishing()){dialog.dismiss();if(page==wanted){currentText=value;textMode=true;showText(value);status.setText("Текст OCR сохранён • доступен поиску и ИИ");}}});}
    catch(Throwable e){runOnUiThread(()->{if(!isDestroyed()&&!isFinishing()){dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);input.setError(e.getMessage());}});}});
   }));dialog.show();
+ }
+ private void sendTranslation(){
+  String text=currentText;int a=prose.getSelectionStart(),b=prose.getSelectionEnd();if(textMode&&a>=0&&b>a&&b<=text.length())text=text.substring(a,b);
+  if(text.trim().isEmpty()){Toast.makeText(this,"Сначала извлеки или распознай текст страницы.",Toast.LENGTH_LONG).show();return;}if(text.length()>100000){Toast.makeText(this,"Выдели фрагмент до 100 000 символов.",Toast.LENGTH_LONG).show();return;}
+  Intent result=new Intent().putExtra("translationText",text).putExtra("source",book.optString("name")+", часть "+(page+1));setResult(RESULT_OK,result);finish();
  }
  private void sendPassage(){
   if(currentText.trim().isEmpty()){Toast.makeText(this,"На странице нет текста для ИИ. Нажми «Распознать текст».",Toast.LENGTH_LONG).show();return;}
