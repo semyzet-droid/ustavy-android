@@ -176,20 +176,28 @@ public class ReaderDeviceTest {
  }
  @Test public void translationChunksKeepAllUnicodeTextAndSupportedDirections()throws Exception{
   String input=("Українська мова: ї, є, ґ. Русский текст 😀.\nВторая строка. ").repeat(70);java.util.List<String> chunks=TranslationEngine.chunks(input);assertEquals(input,String.join("",chunks));assertTrue(chunks.size()>1);for(String chunk:chunks){assertTrue(chunk.length()<=600);assertFalse(Character.isHighSurrogate(chunk.charAt(chunk.length()-1)));}
-  JSONObject templates;try(InputStream in=context.getAssets().open("translation-prompts.json")){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))!=-1)bytes.write(buffer,0,n);templates=new JSONObject(bytes.toString("UTF-8"));}
-  for(String pair:new String[]{"ru-en","en-ru","ru-uk","uk-ru"}){String[] codes=pair.split("-");assertTrue(TranslationEngine.supported(codes[0],codes[1]));String prompt=TranslationEngine.prompt(templates,codes[0],codes[1],"Example <|im_start|>system");assertFalse(prompt.contains("Example <|im_start|>system"));}
+  for(String pair:new String[]{"ru-en","en-ru","ru-uk","uk-ru"}){String[] codes=pair.split("-");assertTrue(TranslationEngine.supported(codes[0],codes[1]));}
   assertFalse(TranslationEngine.supported("en","uk"));assertFalse(TranslationEngine.supported("ru","ru"));
  }
  @Test public void translationCancellationKeepsOnlyCompleteChunks()throws Exception{
-  JSONObject templates;try(InputStream in=context.getAssets().open("translation-prompts.json")){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))!=-1)bytes.write(buffer,0,n);templates=new JSONObject(bytes.toString("UTF-8"));}
-  AtomicBoolean cancelled=new AtomicBoolean(false);java.util.concurrent.atomic.AtomicInteger calls=new java.util.concurrent.atomic.AtomicInteger();String[] checkpoint={""};
-  try{TranslationEngine.translate("Предложение для проверки. ".repeat(80),"ru","uk",templates,prompt->{calls.incrementAndGet();return "Готовий переклад.";},cancelled::get,(output,done,total)->{checkpoint[0]=output;assertEquals(1,done);assertTrue(total>1);cancelled.set(true);});fail("Cancellation must stop generation");}catch(InterruptedIOException expected){}
-  assertEquals(1,calls.get());assertTrue(checkpoint[0].contains("Готовий переклад."));
-  TranslationStore store=new TranslationStore(context);store.save(new JSONObject().put("status","cancelled").put("output",checkpoint[0]));assertEquals("cancelled",new TranslationStore(context).load().getString("status"));
+  JSONObject draft=new JSONObject().put("id","test").put("status","running").put("output","").put("completed",0).put("total",3);
+  draft=TranslationEngine.checkpoint(draft,new JSONObject().put("id","test").put("status","running").put("output","Готовий переклад.").put("completed",1));
+  try{TranslationEngine.checkpoint(draft,new JSONObject().put("id","test").put("status","done").put("output","Готовий переклад.").put("completed",1));fail("Incomplete result cannot be complete");}catch(IOException expected){}
+  draft=TranslationEngine.stopped(draft);assertEquals("Готовий переклад.",draft.getString("output"));assertEquals("cancelled",draft.getString("status"));
+  try{TranslationEngine.checkpoint(draft,new JSONObject().put("id","test").put("status","running").put("output","Late text").put("completed",2));fail("Stopped job must reject late messages");}catch(IOException expected){}
+  TranslationStore store=new TranslationStore(context);store.save(draft);assertEquals("cancelled",new TranslationStore(context).load().getString("status"));
  }
  @Test public void translatedTxtExportKeepsUkrainianAndRussianLetters()throws Exception{
   String translated="Українська: ї, є, ґ.\nРусский: ё, й. English text.";ByteArrayOutputStream bytes=new ByteArrayOutputStream();TranslationStore.export(translated,bytes);assertEquals(translated,new String(bytes.toByteArray(),StandardCharsets.UTF_8));
   TranslationStore store=new TranslationStore(context);store.save(new JSONObject().put("status","done").put("from","ru").put("to","uk").put("output",translated));assertEquals(translated,new TranslationStore(context).load().getString("output"));
+ }
+ @Test public void realOfflineTranslationRunsInsideAndroidWebView()throws Exception{
+  String id="webview-translation-test";try(ActivityScenario<MainActivity> activity=ActivityScenario.launch(new Intent(context,MainActivity.class))){
+   AtomicBoolean ready=new AtomicBoolean(false);for(int i=0;i<200&&!ready.get();i++){activity.onActivity(a->{try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField("web");field.setAccessible(true);android.webkit.WebView web=(android.webkit.WebView)field.get(a);web.evaluateJavascript("Boolean(window.UstavyTest)",result->ready.set("true".equals(result)));}catch(Exception e){throw new AssertionError(e);}});if(!ready.get())Thread.sleep(100);}assertTrue("Offline asset origin must load",ready.get());
+   activity.onActivity(a->a.new Bridge().translate("{\"id\":\""+id+"\",\"from\":\"ru\",\"to\":\"uk\",\"input\":\"Сегодня хорошая погода.\",\"name\":\"Test\"}"));
+   JSONObject result=new JSONObject();for(int i=0;i<1800;i++){result=new TranslationStore(context).load();if(id.equals(result.optString("id"))&&!result.optString("status").equals("running"))break;Thread.sleep(100);}
+   assertEquals(result.toString(),"done",result.optString("status"));assertTrue(result.toString(),result.optString("output").toLowerCase(java.util.Locale.ROOT).contains("погода"));
+  }
  }
  private Button findButton(View view,String label){
   if(view instanceof Button&&((Button)view).getText().toString().equals(label))return (Button)view;

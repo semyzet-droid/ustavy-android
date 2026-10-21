@@ -27,6 +27,14 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - name: Bundle verified offline OCR languages
         run: python3 scripts/prepare_ocr.py
+      - uses: actions/cache@v4
+        with:
+          path: |
+            app/src/main/assets/nmt
+            app/src/main/assets/nmt-runtime
+          key: opus-mt-four-directions-v1
+      - name: Bundle specialized offline translation models
+        run: python3 scripts/prepare_nmt.py
       - name: Enable Android emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -83,22 +91,26 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: app/src/main/assets/model.gguf
-          key: qwen3-1.7b-daeb8e2-q4km
+          key: qwen-1.5b-91cad51-q4km
       - name: Prepare offline assets
         run: |
           pip install pypdf==6.1.1
           python3 scripts/prepare_assets.py
           python3 scripts/prepare_ocr.py
-      - name: Verify real offline translations in all four directions
-        run: |
-          cmake -S scripts/translation-smoke -B build-smoke -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-smoke --target translation-smoke -j2
-          python3 scripts/translation-smoke.py
+      - uses: actions/cache@v4
+        with:
+          path: |
+            app/src/main/assets/nmt
+            app/src/main/assets/nmt-runtime
+          key: opus-mt-four-directions-v1
+      - name: Bundle specialized offline translation models
+        run: python3 scripts/prepare_nmt.py
       - name: Test offline interface
         run: |
           npm install --prefix /tmp/ustavy-tests playwright@1.56.1
           /tmp/ustavy-tests/node_modules/.bin/playwright install --with-deps chromium
           NODE_PATH=/tmp/ustavy-tests/node_modules node scripts/ui-test.cjs
+          NODE_PATH=/tmp/ustavy-tests/node_modules node scripts/nmt-test.cjs
       - name: Build APK
         run: gradle :app:assembleDebug --stacktrace --max-workers=2
       - name: Verify signature and offline manifest
@@ -153,6 +165,7 @@ jobs:
             ASSET_REPORT.json
             SOURCE_DIAGNOSTIC.txt
             TRANSLATION_TESTS.json
+            NMT_ASSET_REPORT.json
             INSTALLATION.txt
           compression-level: 0
           retention-days: 7
@@ -160,5 +173,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "build-${{ github.run_number }}" ustavy-offline.apk ustavy-offline.zip ustavy-books.rar SHA256SUMS.txt ASSET_REPORT.json TRANSLATION_TESTS.json INSTALLATION.txt --title "Уставы и книги 0.7 — переводчик — сборка ${{ github.run_number }}" --notes "Офлайн ИИ-переводчик: русский ↔ английский и русский ↔ украинский. Текст, импорт TXT/PDF/EPUB/FB2, перевод из читалки, остановка, сохранение черновика и экспорт редактируемого результата в TXT UTF-8. До 100 000 символов за задачу; вёрстка и картинки не переносятся. Проверены четыре направления на встроенной модели. Сохранение иллюстраций EPUB/FB2, встроенных картинок PDF и страницы PDF целиком в PNG через системный выбор папки. EPUB, FB2 и FB2.ZIP с иллюстрациями; PDF и TXT. Выделение текста в читалке и статьях, цитаты с комментариями, подсветка и переход к источнику, изменение и удаление заметок. Тема и фон: тёмная, светлая, тёплая, чёрная, свой цвет и своя картинка с телефона; общее оформление приложения и читалки. PDF с иллюстрациями, TXT, JPG/PNG/WebP. Масштаб страниц, закладки и сохранение места. Офлайн OCR русского и английского печатного текста из PDF и фотографий. Кнопка Распознать текст на текущей странице; проверка и исправление результата, сохранение для поиска и ИИ. Проверены реальное распознавание русского текста, скан PDF и пустая страница. Тип установки указан в INSTALLATION.txt; если подпись предыдущего тестового APK не совпадает, сборка Уставы • переводчик устанавливается отдельно, старая версия и её данные сохраняются. Проверены чтение PDF, иллюстрации и восстановление страницы в Android-эмуляторе. Без INTERNET. Проверка на Samsung S25 Ultra требуется." --prerelease --target "${{ github.sha }}"
+          gh release create "build-${{ github.run_number }}" ustavy-offline.apk ustavy-offline.zip ustavy-books.rar SHA256SUMS.txt ASSET_REPORT.json TRANSLATION_TESTS.json NMT_ASSET_REPORT.json INSTALLATION.txt --title "Уставы и книги 0.7 — переводчик — сборка ${{ github.run_number }}" --notes "Офлайн специализированный OPUS-MT переводчик: русский ↔ английский и русский ↔ украинский. Текст, импорт TXT/PDF/EPUB/FB2, перевод из читалки, остановка, сохранение черновика и экспорт редактируемого результата в TXT UTF-8. До 100 000 символов за задачу; вёрстка и картинки не переносятся. Проверены четыре направления на встроенной модели. Сохранение иллюстраций EPUB/FB2, встроенных картинок PDF и страницы PDF целиком в PNG через системный выбор папки. EPUB, FB2 и FB2.ZIP с иллюстрациями; PDF и TXT. Выделение текста в читалке и статьях, цитаты с комментариями, подсветка и переход к источнику, изменение и удаление заметок. Тема и фон: тёмная, светлая, тёплая, чёрная, свой цвет и своя картинка с телефона; общее оформление приложения и читалки. PDF с иллюстрациями, TXT, JPG/PNG/WebP. Масштаб страниц, закладки и сохранение места. Офлайн OCR русского и английского печатного текста из PDF и фотографий. Кнопка Распознать текст на текущей странице; проверка и исправление результата, сохранение для поиска и ИИ. Проверены реальное распознавание русского текста, скан PDF и пустая страница. Тип установки указан в INSTALLATION.txt; если подпись предыдущего тестового APK не совпадает, сборка Уставы • переводчик устанавливается отдельно, старая версия и её данные сохраняются. Проверены чтение PDF, иллюстрации и восстановление страницы в Android-эмуляторе. Без INTERNET. Проверка на Samsung S25 Ultra требуется." --prerelease --target "${{ github.sha }}"
 

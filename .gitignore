@@ -6,3 +6,7 @@ vendor/
 *.gguf
 app/src/main/assets/corpus.json
 app/src/main/assets/licenses/
+
+.ci-signing/
+app/src/main/assets/nmt/
+app/src/main/assets/nmt-runtime/
