@@ -48,6 +48,16 @@ public class ReaderDeviceTest {
   JSONObject book=store.importBook(new ByteArrayInputStream(pdf(true)),"Scan.pdf","application/pdf");
   assertEquals(2,book.getInt("pages"));assertNull(store.searchable(book.getString("id")));
   assertFalse(book.getString("warning").isEmpty());
+  try(ActivityScenario<BookActivity> activity=ActivityScenario.launch(new Intent(context,BookActivity.class).putExtra("bookId",book.getString("id")))){
+   awaitPage(activity,Color.BLUE);
+   activity.onActivity(a->findButton(a.getWindow().getDecorView(),"Текст / страница").performClick());
+   AtomicBoolean shown=new AtomicBoolean(false);
+   for(int i=0;i<100&&!shown.get();i++){activity.onActivity(a->shown.set(hasText(a.getWindow().getDecorView(),"На этой странице нет")));if(!shown.get())Thread.sleep(100);}
+   assertTrue(shown.get());
+   activity.onActivity(a->findButton(a.getWindow().getDecorView(),"ИИ").performClick());
+   InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED,activity.getState());
+  }
  }
  @Test public void imagesAndUtf8BooksPersist()throws Exception{
   Bitmap bitmap=Bitmap.createBitmap(40,40,Bitmap.Config.ARGB_8888);bitmap.eraseColor(Color.MAGENTA);ByteArrayOutputStream data=new ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.PNG,100,data);bitmap.recycle();
@@ -63,6 +73,10 @@ public class ReaderDeviceTest {
  private Button findButton(View view,String label){
   if(view instanceof Button&&((Button)view).getText().toString().equals(label))return (Button)view;
   if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){Button b=findButton(group.getChildAt(i),label);if(b!=null)return b;}}return null;
+ }
+ private boolean hasText(View view,String value){
+  if(view instanceof TextView&&((TextView)view).getText().toString().contains(value))return true;
+  if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++)if(hasText(group.getChildAt(i),value))return true;}return false;
  }
  private ZoomPageView findPage(View view){
   if(view instanceof ZoomPageView)return (ZoomPageView)view;

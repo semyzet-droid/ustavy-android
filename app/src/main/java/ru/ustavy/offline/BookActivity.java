@@ -51,7 +51,7 @@ public final class BookActivity extends Activity {
   if(Build.VERSION.SDK_INT>=23)getWindow().getDecorView().setSystemUiVisibility(theme==0?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
  }
  private void font(int delta){font=Math.max(14,Math.min(34,font+delta));prefs.edit().putInt("font",font).apply();prose.setTextSize(font);if(kind.equals("pdf")&&!textMode){textMode=true;loadPage();}}
- private void showText(String text){currentText=text;picture.setVisibility(View.GONE);scroll.setVisibility(View.VISIBLE);prose.setText(text);colors();if(kind.equals("txt"))status.setText("Режим чтения • позиция сохраняется автоматически");}
+ private void showText(String text){picture.setVisibility(View.GONE);scroll.setVisibility(View.VISIBLE);prose.setText(text);colors();if(kind.equals("txt"))status.setText("Режим чтения • позиция сохраняется автоматически");}
  private final Runnable saveScroll=()->{
   if(scroll==null||prose==null||!kind.equals("txt"))return;int max=Math.max(0,prose.getHeight()-scroll.getHeight());float ratio=max==0?0:Math.max(0,Math.min(1,(float)scroll.getScrollY()/max));prefs.edit().putFloat(id+":scroll",ratio).apply();
  };
