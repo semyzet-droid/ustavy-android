@@ -96,13 +96,20 @@ public class ReaderDeviceTest {
   context.getSharedPreferences("reader",0).edit().putInt(id+":page",1).commit();
   try(ActivityScenario<BookActivity> activity=ActivityScenario.launchActivityForResult(new Intent(context,BookActivity.class).putExtra("bookId",id))){
    activity.onActivity(a->findButton(a.getWindow().getDecorView(),"Распознать текст").performClick());
-   // Espresso waits for the main thread; recognition happens on a worker, so await its review dialog.
-   boolean ready=false;for(int i=0;i<300&&!ready;i++){
-    try{androidx.test.espresso.Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withText("Текст OCR — проверь ошибки")).check(androidx.test.espresso.assertion.ViewAssertions.matches(androidx.test.espresso.matcher.ViewMatchers.isDisplayed()));ready=true;}
-    catch(androidx.test.espresso.NoMatchingViewException e){Thread.sleep(100);}
+   // Inspect the real review window on the main thread; transient progress windows may have no focus.
+   AtomicBoolean reviewed=new AtomicBoolean(false);
+   for(int i=0;i<300&&!reviewed.get();i++){
+    activity.onActivity(a->{try{
+     java.lang.reflect.Field field=BookActivity.class.getDeclaredField("activeDialog");field.setAccessible(true);
+     android.app.Dialog dialog=(android.app.Dialog)field.get(a);
+     if(dialog instanceof android.app.AlertDialog&&dialog.isShowing()&&hasText(dialog.getWindow().getDecorView(),"Текст OCR — проверь ошибки")){
+      android.app.AlertDialog review=(android.app.AlertDialog)dialog;
+      review.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick();reviewed.set(true);
+     }
+    }catch(ReflectiveOperationException e){throw new AssertionError(e);}});
+    if(!reviewed.get())Thread.sleep(100);
    }
-   assertTrue("OCR review must appear",ready);
-   androidx.test.espresso.Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withText("Сохранить")).perform(androidx.test.espresso.action.ViewActions.click());
+   assertTrue("OCR review must appear and allow saving",reviewed.get());
    boolean saved=false;for(int i=0;i<100&&!saved;i++){saved=store.isOcr(id,1);if(!saved)Thread.sleep(100);}assertTrue(saved);
    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
    assertTrue(new BookStore(context).pageText(id,0).trim().isEmpty());assertTrue(store.pageText(id,1).contains("42"));

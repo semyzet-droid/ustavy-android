@@ -28,6 +28,7 @@ public final class BookActivity extends Activity {
   root.setOnApplyWindowInsetsListener((v,in)->{v.setPadding(dp(12)+in.getSystemWindowInsetLeft(),dp(8)+in.getSystemWindowInsetTop(),dp(12)+in.getSystemWindowInsetRight(),in.getSystemWindowInsetBottom());return in;});
   root.addView(button("← К библиотеке",this::finish));title=new TextView(this);title.setText(book.optString("name"));title.setTextSize(18);title.setPadding(0,dp(5),0,dp(5));root.addView(title);
   status=new TextView(this);status.setTextSize(13);status.setPadding(0,dp(5),0,dp(7));root.addView(status);
+  if(!kind.equals("txt"))root.addView(button("Распознать текст",this::recognize));
   picture=new ZoomPageView(this);root.addView(picture,new LinearLayout.LayoutParams(-1,0,1));
   scroll=new ScrollView(this);prose=new TextView(this);prose.setTextIsSelectable(true);prose.setPadding(dp(12),dp(15),dp(12),dp(35));prose.setLineSpacing(dp(5),1.2f);scroll.addView(prose);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));scroll.setVisibility(View.GONE);
   scroll.setOnScrollChangeListener((v,x,y,ox,oy)->{if(restoring||!kind.equals("txt"))return;handler.removeCallbacks(saveScroll);handler.postDelayed(saveScroll,350);});
@@ -37,7 +38,7 @@ public final class BookActivity extends Activity {
    bar.addView(button("★",this::toggleBookmark));bar.addView(button("Закладки",this::bookmarks));bar.addView(button("Текст / страница",()->{textMode=!textMode;loadPage();}));
    
   }
-  if(!kind.equals("txt")){bar.addView(button("Распознать текст",this::recognize));bar.addView(button("Править текст",this::editCurrentText));bar.addView(button("ИИ",this::sendPassage));}
+  if(!kind.equals("txt")){bar.addView(button("Править текст",this::editCurrentText));bar.addView(button("ИИ",this::sendPassage));}
   if(kind.equals("image"))bar.addView(button("Текст / фото",()->{textMode=!textMode;if(textMode)showText(currentText.isEmpty()?"Нажми «Распознать текст» для чтения изображения.":currentText);else{scroll.setVisibility(View.GONE);picture.setVisibility(View.VISIBLE);}}));
   {bar.addView(button("А−",()->font(-2)));bar.addView(button("А+",()->font(2)));bar.addView(button("Тема",()->{theme=(theme+1)%3;prefs.edit().putInt("theme",theme).apply();colors();}));}
   if(!kind.equals("txt")){bar.addView(button("−",()->picture.changeZoom(0.8f)));bar.addView(button("+",()->picture.changeZoom(1.25f)));}
