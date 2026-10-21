@@ -9,7 +9,44 @@ concurrency:
   group: android-main
   cancel-in-progress: false
 jobs:
+  reader-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: gradle :app:connectedDebugAndroidTest -PreaderTest --stacktrace --max-workers=2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reader-device-test-results
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
   build:
+    needs: reader-tests
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
@@ -27,6 +64,10 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - name: Install Android tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.0.13004108" "cmake;3.22.1"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: ustavy-books-test-signing-v1
       - name: Fetch pinned inference engine
         run: |
           mkdir -p vendor/llama.cpp
@@ -53,6 +94,15 @@ jobs:
           if grep -q android.permission.INTERNET permissions.txt; then exit 1; fi
           cp app/build/outputs/apk/debug/app-debug.apk ustavy-offline.apk
           sha256sum ustavy-offline.apk > SHA256SUMS.txt
+      - name: Create verified ZIP download
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile("ustavy-offline.zip","w",compression=zipfile.ZIP_DEFLATED,compresslevel=6) as z:
+              z.write("ustavy-offline.apk")
+          with zipfile.ZipFile("ustavy-offline.zip") as z:
+              assert z.testzip() is None
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -68,4 +118,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "build-${{ github.run_number }}" ustavy-offline.apk SHA256SUMS.txt ASSET_REPORT.json --title "Уставы офлайн — сборка ${{ github.run_number }}" --notes "Тестовая Android ARM64 APK со встроенной моделью Qwen2.5 1.5B. Без разрешения INTERNET. Состав встроенных текстов указан в ASSET_REPORT.json. Проверка на реальном Samsung S25 Ultra ещё требуется." --prerelease --target "${{ github.sha }}"
+          gh release create "build-${{ github.run_number }}" ustavy-offline.apk ustavy-offline.zip SHA256SUMS.txt ASSET_REPORT.json --title "Уставы и книги 0.2 — сборка ${{ github.run_number }}" --notes "PDF с иллюстрациями, TXT, JPG/PNG/WebP. Масштаб страниц, закладки и сохранение места. Текст PDF доступен поиску и ИИ; OCR и анализ картинок не включены. Новое приложение Уставы • книги устанавливается рядом с первой версией. Проверены чтение PDF, иллюстрации и восстановление страницы в Android-эмуляторе. Без INTERNET. Проверка на Samsung S25 Ultra требуется." --prerelease --target "${{ github.sha }}"
+

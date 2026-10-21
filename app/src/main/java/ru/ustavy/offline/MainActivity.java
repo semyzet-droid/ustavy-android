@@ -15,11 +15,13 @@ import org.json.*;
 
 public class MainActivity extends Activity {
  private WebView web;
+ private BookStore books;
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final AtomicBoolean busy=new AtomicBoolean(false);
  private volatile boolean cancelled=false;
  @Override public void onCreate(Bundle state){
   super.onCreate(state);
+  books=new BookStore(this);
   getWindow().setStatusBarColor(0xff101914);getWindow().setNavigationBarColor(0xff101914);
   web=new WebView(this);web.setBackgroundColor(0xff101914);
   web.setOnApplyWindowInsetsListener((v,in)->{v.setPadding(in.getSystemWindowInsetLeft(),in.getSystemWindowInsetTop(),in.getSystemWindowInsetRight(),in.getSystemWindowInsetBottom());return in;});
@@ -42,6 +44,22 @@ public class MainActivity extends Activity {
   JSONObject o=obj("id",id);try{o.put("status",status);o.put("text",text);}catch(Exception ignored){}emit("ai",o);
  }
  public class Bridge {
+  @JavascriptInterface public void loadBooks(){
+   worker.execute(()->{try{
+    JSONArray list=books.list();
+    for(int i=0;i<list.length();i++){JSONObject indexed=books.searchable(list.getJSONObject(i).getString("id"));if(indexed!=null)emit("bookindexed",indexed);}
+    JSONObject result=new JSONObject();result.put("books",list);emit("books",result);
+   }catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});
+  }
+  @JavascriptInterface public void importBook(){runOnUiThread(()->{
+   Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");
+   i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/pdf","text/plain","image/jpeg","image/png","image/webp","image/bmp"});startActivityForResult(i,11);
+  });}
+  @JavascriptInterface public void openBook(String id){runOnUiThread(()->startActivityForResult(new Intent(MainActivity.this,BookActivity.class).putExtra("bookId",id),20));}
+  @JavascriptInterface public void readTextBook(String id,String name,String text){
+   if(id.length()>200||name.length()>300||text.length()>2000000){emit("importerror",obj("message","Слишком длинная книга."));return;}
+   worker.execute(()->{try{JSONObject meta=books.textBook(id,name,text);openBook(meta.getString("id"));}catch(Exception e){emit("importerror",obj("message",e.getMessage()));}});
+  }
   @JavascriptInterface public void loadCorpus(){
    worker.execute(()->{
     try{String text=read(getAssets().open("corpus.json"),15000000);emit("corpus",new JSONObject(text));}
@@ -85,7 +103,23 @@ public class MainActivity extends Activity {
   try(InputStream in=input;ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1){if(out.size()+n>limit)throw new IOException("Файл слишком большой.");out.write(b,0,n);}return out.toString("UTF-8").replace("\uFEFF","");}
  }
  @Override protected void onActivityResult(int request,int result,Intent data){
-  super.onActivityResult(request,result,data);if(request!=10||result!=RESULT_OK||data==null||data.getData()==null)return;
+  super.onActivityResult(request,result,data);
+  if(request==20){
+   if(result==RESULT_OK&&data!=null){JSONObject passage=obj("text",data.getStringExtra("text"));try{passage.put("source",data.getStringExtra("source"));}catch(Exception ignored){}emit("bookpassage",passage);}
+   new Bridge().loadBooks();return;
+  }
+  if(request==11&&result==RESULT_OK&&data!=null&&data.getData()!=null){
+   Uri uri=data.getData();emit("importstatus",obj("message","Добавляю книгу и извлекаю текст для поиска…"));
+   worker.execute(()->{try{
+    String name="Моя книга";try(Cursor c=getContentResolver().query(uri,null,null,null,null)){if(c!=null&&c.moveToFirst()){int col=c.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(col>=0)name=c.getString(col);}}
+    JSONObject meta=books.importBook(getContentResolver().openInputStream(uri),name,getContentResolver().getType(uri));
+    JSONObject indexed=books.searchable(meta.getString("id"));if(indexed!=null)emit("bookindexed",indexed);
+    JSONObject list=new JSONObject();list.put("books",books.list());emit("books",list);
+    emit("importstatus",obj("message","Книга добавлена. "+meta.optString("warning")));
+   }catch(Throwable e){emit("importerror",obj("message","Не удалось добавить файл: "+e.getMessage()));}});
+   return;
+  }
+  if(request!=10||result!=RESULT_OK||data==null||data.getData()==null)return;
   Uri uri=data.getData();
   worker.execute(()->{
    try{
@@ -99,3 +133,4 @@ public class MainActivity extends Activity {
  @Override public void onBackPressed(){web.evaluateJavascript("window.goBack && window.goBack();",null);}
  @Override protected void onDestroy(){cancelled=true;try{LocalAi.cancel();}catch(Throwable ignored){}worker.shutdownNow();web.removeJavascriptInterface("Phone");web.destroy();super.onDestroy();}
 }
+

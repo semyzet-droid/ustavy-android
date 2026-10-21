@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(ustavy LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
@@ -18,3 +19,4 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../vendor/llama.cpp llama)
 add_library(ustavy SHARED inference.cpp)
 target_link_libraries(ustavy PRIVATE llama android log)
 target_link_options(ustavy PRIVATE "-Wl,-z,max-page-size=16384")
+
