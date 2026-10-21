@@ -45,14 +45,14 @@ public final class BookStore {
    if(kind.equals("pdf")){
     try(ParcelFileDescriptor fd=ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY);PdfRenderer renderer=new PdfRenderer(fd)){total=renderer.getPageCount();if(total<1)throw new IOException("В PDF нет страниц.");}
     try(PDDocument document=PDDocument.load(file)){
-     PDFTextStripper stripper=new PDFTextStripper();stripper.setSortByPosition(true);int used=0;
+     PDFTextStripper stripper=new PDFTextStripper();stripper.setSortByPosition(true);int used=0,visible=0;
      for(int p=1;p<=Math.min(total,1000);p++){
       stripper.setStartPage(p);stripper.setEndPage(p);String text=stripper.getText(document);
       if(used+text.length()>1000000){warning="Поисковый текст ограничен первыми "+pages.length()+" страницами. Все страницы доступны для просмотра.";break;}
-      pages.put(text);used+=text.length();
+      pages.put(text);used+=text.length();visible+=text.trim().length();
      }
      if(total>pages.length()&&warning.isEmpty())warning="Для поиска обработаны первые "+pages.length()+" страниц. Просмотр доступен для всей книги.";
-     if(used==0)warning="PDF содержит сканы или не имеет извлекаемого текста. Страницы и картинки доступны; OCR пока не поддерживается.";
+     if(visible==0)warning="PDF содержит сканы или не имеет извлекаемого текста. Страницы и картинки доступны; OCR пока не поддерживается.";
     }catch(Exception e){warning="Страницы доступны для просмотра, но текст извлечь не удалось. Поиск и ИИ по этой книге недоступны.";}
    }else if(kind.equals("image")){
     BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.toString(),bounds);
@@ -78,7 +78,7 @@ public final class BookStore {
  public JSONObject searchable(String id)throws Exception{
   JSONObject meta=get(id);if(meta.getString("kind").equals("image")||meta.optString("origin").equals("reader-copy"))return null;
   JSONArray pages=new JSONArray(read(path(id,".index.json"),12*1024*1024));StringBuilder text=new StringBuilder();
-  for(int i=0;i<pages.length();i++){if(meta.getString("kind").equals("pdf"))text.append("\nСтраница ").append(i+1).append("\n");text.append(pages.getString(i)).append("\n");}
+  for(int i=0;i<pages.length();i++){String page=pages.getString(i);if(page.trim().isEmpty())continue;if(meta.getString("kind").equals("pdf"))text.append("\nСтраница ").append(i+1).append("\n");text.append(page).append("\n");}
   if(text.toString().trim().isEmpty())return null;
   JSONObject result=new JSONObject();result.put("id","book-"+id);result.put("bookId",id);result.put("name",meta.getString("name"));result.put("text",text.toString());result.put("source","Файл с телефона");result.put("note","Импортированная книга. "+meta.optString("warning"));return result;
  }
