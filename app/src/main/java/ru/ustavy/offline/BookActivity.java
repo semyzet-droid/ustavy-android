@@ -19,9 +19,9 @@ public final class BookActivity extends Activity {
  private LinearLayout root,bar;private TextView title,status;private ScrollView scroll;private TextView prose;private ZoomPageView picture;
  private android.content.SharedPreferences prefs;private final ExecutorService io=Executors.newSingleThreadExecutor();private final Handler handler=new Handler(Looper.getMainLooper());
  private final AtomicInteger generation=new AtomicInteger();private boolean textMode=false,restoring=false;private String currentText="",focusQuote="";
- private Dialog activeDialog;private boolean ocrBusy=false;private PdfRenderer renderer;private ParcelFileDescriptor descriptor;
+ private String pendingImage="";private Dialog activeDialog;private boolean ocrBusy=false;private PdfRenderer renderer;private ParcelFileDescriptor descriptor;
  @Override public void onCreate(Bundle state){
-  super.onCreate(state);prefs=getSharedPreferences("reader",0);id=getIntent().getStringExtra("bookId");store=new BookStore(this);notebook=new NoteStore(this);focusQuote=getIntent().getStringExtra("focusQuote");if(focusQuote==null)focusQuote="";
+  super.onCreate(state);if(state!=null)pendingImage=state.getString("pendingImage","");prefs=getSharedPreferences("reader",0);id=getIntent().getStringExtra("bookId");store=new BookStore(this);notebook=new NoteStore(this);focusQuote=getIntent().getStringExtra("focusQuote");if(focusQuote==null)focusQuote="";
   try{book=store.get(id);kind=book.getString("kind");total=book.optInt("pages",1);page=Math.max(0,Math.min(total-1,prefs.getInt(id+":page",0)));font=prefs.getInt("font",20);}
   catch(Exception e){new AlertDialog.Builder(this).setMessage("Книга недоступна: "+e.getMessage()).setPositiveButton("Закрыть",(d,w)->finish()).setOnCancelListener(d->finish()).show();return;}
   root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(12),dp(8),dp(12),0);
@@ -39,6 +39,7 @@ public final class BookActivity extends Activity {
    
   }
   if(kind.equals("pdf")||kind.equals("image"))bar.addView(button("Править текст",this::editCurrentText));
+  if(!kind.equals("txt"))bar.addView(button("Картинки",this::exportPictures));
   bar.addView(button("Заметки",this::pageNotes));bar.addView(button("ИИ",this::sendPassage));
   if(kind.equals("image"))bar.addView(button("Текст / фото",()->{textMode=!textMode;if(textMode)showText(currentText.isEmpty()?"Нажми «Распознать текст» для чтения изображения.":currentText);else{scroll.setVisibility(View.GONE);picture.setVisibility(View.VISIBLE);}}));
   {bar.addView(button("А−",()->font(-2)));bar.addView(button("А+",()->font(2)));bar.addView(button("Тема",()->{String[] schemes={"dark","light","sepia","black"};int index=java.util.Arrays.asList(schemes).indexOf(Appearance.scheme(this));Appearance.save(this,schemes[(index+1)%4],Appearance.prefs(this).getString("color","#233b50"),Appearance.prefs(this).getInt("strength",25));colors();}));}
@@ -97,6 +98,27 @@ public final class BookActivity extends Activity {
    Bitmap b=OcrEngine.decodeImage(store.original(id));String text=store.pageText(id,0);
    final Bitmap image=b;runOnUiThread(()->{if(!isDestroyed()){picture.setBitmap(image);currentText=text;if(textMode){showText(text);restoreScroll();}status.setText(text.isEmpty()?"Изображение • масштаб двумя пальцами":"Изображение • текст OCR сохранён");}});
   }catch(Throwable e){error(e);}});
+ }
+ private void exportPictures(){
+  final int wanted=page;ProgressDialog progress=new ProgressDialog(this);progress.setMessage("Готовлю картинки текущей страницы…");progress.setCancelable(false);activeDialog=progress;progress.show();
+  io.execute(()->{try{java.util.List<BookImages.Picture> pictures=BookImages.collect(this,store,id,wanted);runOnUiThread(()->{
+   if(isDestroyed()||isFinishing())return;progress.dismiss();if(pictures.isEmpty()){new AlertDialog.Builder(this).setMessage("В этой части книги нет поддерживаемых растровых иллюстраций. Для PDF можно сохранить страницу целиком.").setPositiveButton("Понятно",null).show();return;}
+   String[] labels=new String[pictures.size()];for(int i=0;i<labels.length;i++)labels[i]=pictures.get(i).label;
+   activeDialog=new AlertDialog.Builder(this).setTitle("Картинки этой страницы / части").setItems(labels,(d,w)->previewPicture(pictures.get(w))).setNegativeButton("Отмена",null).show();
+  });}catch(Throwable e){runOnUiThread(()->{if(!isDestroyed()&&!isFinishing()){progress.dismiss();error(e);}});}});
+ }
+ private void previewPicture(BookImages.Picture selected){
+  try{Bitmap bitmap=OcrEngine.decodeImage(selected.file);ZoomPageView preview=new ZoomPageView(this);preview.setBitmap(bitmap);preview.setMinimumHeight(dp(300));
+   AlertDialog dialog=new AlertDialog.Builder(this).setTitle(selected.label).setView(preview).setPositiveButton("Сохранить PNG",(d,w)->{
+    pendingImage=selected.file.getName();Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType("image/png");intent.putExtra(Intent.EXTRA_TITLE,"Картинка-"+(page+1)+".png");startActivityForResult(intent,90);
+   }).setNegativeButton("Отмена",null).create();dialog.setOnDismissListener(d->{preview.setBitmap(null);bitmap.recycle();});activeDialog=dialog;dialog.show();dialog.getWindow().setLayout(-1,dp(470));
+  }catch(Exception e){error(e);}
+ }
+ @Override protected void onSaveInstanceState(Bundle state){state.putString("pendingImage",pendingImage);super.onSaveInstanceState(state);}
+ @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);
+  if(request!=90)return;String name=pendingImage;pendingImage="";if(result!=RESULT_OK||data==null||data.getData()==null)return;
+  if(!name.matches("[a-f0-9-]{36}\\.png")){error(new IOException("Картинка не найдена. Открой её заново."));return;}File file=new File(new File(getCacheDir(),"book-pictures"),name);android.net.Uri uri=data.getData();
+  io.execute(()->{try(OutputStream out=getContentResolver().openOutputStream(uri)){BookImages.copy(file,out);runOnUiThread(()->{if(!isDestroyed())Toast.makeText(this,"Картинка сохранена в выбранную папку",Toast.LENGTH_LONG).show();});}catch(Exception e){error(e);}});
  }
  private final ActionMode.Callback selectionNotes=new ActionMode.Callback(){
   public boolean onCreateActionMode(ActionMode mode,Menu menu){menu.add(0,707,0,"В заметки").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);return true;}

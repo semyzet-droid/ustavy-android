@@ -77,6 +77,10 @@ public final class BookStore {
   JSONObject meta=new JSONObject();meta.put("id",id);meta.put("name",name);meta.put("kind","txt");meta.put("pages",1);meta.put("indexedPages",1);meta.put("warning","");meta.put("origin","reader-copy");
   atomic(path(id,".book"),text);JSONArray pages=new JSONArray();pages.put(text);atomic(path(id,".index.json"),pages.toString());atomic(path(id,".json"),meta.toString());return meta;
  }
+ public List<File> imageFiles(String id,int page)throws Exception{
+  get(id);ArrayList<File> files=new ArrayList<>();File manifest=path(id,".images.json");if(!manifest.exists())return files;JSONArray images=new JSONArray(read(manifest,12*1024*1024)).optJSONArray(page);if(images==null)return files;
+  for(int i=0;i<images.length();i++){String name=images.getJSONObject(i).getString("file");if(name.matches("[a-f0-9-]{36}\\.img")){File file=new File(path(id,"-media"),name);if(file.isFile())files.add(file);}}return files;
+ }
  public android.text.SpannableString illustrated(String id,int page,String text,int width)throws Exception{
   android.text.SpannableString result=new android.text.SpannableString(text);File manifest=path(id,".images.json");if(!manifest.exists())return result;
   JSONArray all=new JSONArray(read(manifest,12*1024*1024));JSONArray images=all.optJSONArray(page);if(images==null)return result;

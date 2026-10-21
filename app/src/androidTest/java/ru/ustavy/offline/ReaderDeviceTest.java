@@ -143,7 +143,7 @@ public class ReaderDeviceTest {
   files.put("OPS/book.opf",utf8("<package><manifest><item id='second' href='second.xhtml'/><item id='first' href='first.xhtml'/></manifest><spine><itemref idref='first'/><itemref idref='second'/></spine></package>"));
   files.put("OPS/first.xhtml",utf8("<html><body><h1>Первая глава</h1><p>Воинская служба.</p><img src='image.png'/></body></html>"));files.put("OPS/second.xhtml",utf8("<html><body><p>Вторая глава</p></body></html>"));files.put("OPS/image.png",blueImage());
   JSONObject book=store.importBook(new ByteArrayInputStream(zip(files)),"Книга.epub","application/epub+zip");String id=book.getString("id");assertEquals(2,book.getInt("pages"));assertTrue(store.pageText(id,0).contains("Первая"));assertTrue(store.pageText(id,1).contains("Вторая"));
-  android.text.SpannableString text=store.illustrated(id,0,store.pageText(id,0),300);android.text.style.ImageSpan[] images=text.getSpans(0,text.length(),android.text.style.ImageSpan.class);assertEquals(1,images.length);
+  android.text.SpannableString text=store.illustrated(id,0,store.pageText(id,0),300);android.text.style.ImageSpan[] images=text.getSpans(0,text.length(),android.text.style.ImageSpan.class);assertEquals(1,images.length);assertEquals(1,BookImages.collect(context,store,id,0).size());
   android.graphics.drawable.BitmapDrawable drawable=(android.graphics.drawable.BitmapDrawable)images[0].getDrawable();assertEquals(Color.BLUE,drawable.getBitmap().getPixel(10,10));
   context.getSharedPreferences("reader",0).edit().putInt(id+":page",1).commit();try(ActivityScenario<BookActivity> activity=ActivityScenario.launch(new Intent(context,BookActivity.class).putExtra("bookId",id))){awaitText(activity,"Вторая глава");}
  }
@@ -168,6 +168,12 @@ public class ReaderDeviceTest {
  }
  private EditText findEdit(View view){if(view instanceof EditText)return (EditText)view;if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){EditText found=findEdit(group.getChildAt(i));if(found!=null)return found;}}return null;}
  private void awaitText(ActivityScenario<BookActivity> activity,String text)throws Exception{AtomicBoolean ready=new AtomicBoolean(false);for(int i=0;i<100&&!ready.get();i++){activity.onActivity(a->ready.set(hasText(a.getWindow().getDecorView(),text)));if(!ready.get())Thread.sleep(100);}assertTrue("Book text must be readable",ready.get());}
+ @Test public void pdfEmbeddedPictureAndWholePageExportAsValidPng()throws Exception{
+  Bitmap bitmap=BitmapFactory.decodeByteArray(blueImage(),0,blueImage().length);PdfDocument pdf=new PdfDocument();PdfDocument.Page page=pdf.startPage(new PdfDocument.PageInfo.Builder(200,300,1).create());page.getCanvas().drawColor(Color.WHITE);page.getCanvas().drawBitmap(bitmap,20,30,null);pdf.finishPage(page);ByteArrayOutputStream bytes=new ByteArrayOutputStream();pdf.writeTo(bytes);pdf.close();bitmap.recycle();
+  JSONObject book=store.importBook(new ByteArrayInputStream(bytes.toByteArray()),"Картинки.pdf","application/pdf");java.util.List<BookImages.Picture> images=BookImages.collect(context,store,book.getString("id"),0);assertTrue("Page plus embedded bitmap",images.size()>=2);
+  ByteArrayOutputStream exported=new ByteArrayOutputStream();BookImages.copy(images.get(1).file,exported);byte[] data=exported.toByteArray();assertEquals((byte)0x89,data[0]);assertEquals('P',data[1]);
+  Bitmap saved=BitmapFactory.decodeByteArray(data,0,data.length);assertNotNull(saved);assertTrue(Color.blue(saved.getPixel(10,10))>240);saved.recycle();
+ }
  private Button findButton(View view,String label){
   if(view instanceof Button&&((Button)view).getText().toString().equals(label))return (Button)view;
   if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){Button b=findButton(group.getChildAt(i),label);if(b!=null)return b;}}return null;
