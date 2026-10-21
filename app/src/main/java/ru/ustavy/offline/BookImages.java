@@ -14,7 +14,7 @@ import java.util.*;
 /** Exportable PNG copies; originals and book indexes remain private and unchanged. */
 public final class BookImages {
  public static final class Picture {public final File file;public final String label;Picture(File f,String l){file=f;label=l;}}
- private final Context context;private final File dir;private final ArrayList<Picture> pictures=new ArrayList<>();private long bytes=0;
+ private final Context context;private final File dir;private final ArrayList<Picture> pictures=new ArrayList<>();private long bytes=0;private final Set<Object> seenImages=Collections.newSetFromMap(new IdentityHashMap<>());
  private BookImages(Context c){context=c;dir=new File(c.getCacheDir(),"book-pictures");dir.mkdirs();File[] old=dir.listFiles();if(old!=null)for(File file:old)if(file.lastModified()<System.currentTimeMillis()-86400000L)file.delete();}
  public static List<Picture> collect(Context c,BookStore store,String id,int page)throws Exception{
   BookImages result=new BookImages(c);String kind=store.get(id).getString("kind");
@@ -34,7 +34,7 @@ public final class BookImages {
   for(COSName name:resources.getXObjectNames()){
    if(pictures.size()>=64||bytes>=64*1024*1024)return;
    try{PDXObject object=resources.getXObject(name);
-    if(object instanceof PDImageXObject){PDImageXObject source=(PDImageXObject)object;if((long)source.getWidth()*source.getHeight()>12000000)continue;Bitmap bitmap=source.getImage();if(bitmap!=null){try{add(bitmap,"Картинка "+pictures.size());}finally{bitmap.recycle();}}}
+    if(object instanceof PDImageXObject){PDImageXObject source=(PDImageXObject)object;if(!seenImages.add(source.getCOSObject()))continue;if((long)source.getWidth()*source.getHeight()>12000000)continue;Bitmap bitmap=source.getImage();if(bitmap!=null){try{add(bitmap,"Картинка "+pictures.size());}finally{bitmap.recycle();}}}
     else if(object instanceof PDFormXObject)extract(((PDFormXObject)object).getResources(),depth+1,seen);
    }catch(IOException ignored){}
   }
